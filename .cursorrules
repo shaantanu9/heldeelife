@@ -1,0 +1,1410 @@
+# HeldeeLife Project Rules and Patterns
+
+This file contains project-specific patterns, preferences, and learnings that help maintain code quality and consistency.
+
+## Linting and Code Quality
+
+### React Hook Dependencies
+- **Always use `useCallback` for functions used in `useEffect` dependencies**
+  - When a function is used inside `useEffect` or passed as a dependency, wrap it with `useCallback`
+  - Include all dependencies in the `useCallback` dependency array
+  - Example: Functions like `calculateSEOScore`, `fetchOrders`, `validateFile` should be wrapped in `useCallback`
+
+- **Handle missing dependencies properly**
+  - If a function must be recreated on each render but shouldn't trigger `useEffect`, use `useCallback` with proper dependencies
+  - For functions that are intentionally excluded (like `fetchPost` that depends on `postId`), use `eslint-disable-next-line react-hooks/exhaustive-deps` with a comment explaining why
+
+### JSX Entity Escaping
+- **Always escape special characters in JSX text content**
+  - Use `&apos;` for apostrophes (e.g., "you're" → "you&apos;re", "doesn't" → "doesn&apos;t", "we'll" → "we&apos;ll")
+  - Use `&quot;` for double quotes in text content (e.g., `"search query"` → `&quot;search query&quot;`)
+  - This prevents React warnings about unescaped entities
+
+### Next.js Image Optimization
+- **Always use Next.js `Image` component instead of `<img>` tags**
+  - Import: `import Image from "next/image"`
+  - Use `fill` prop with relative parent container for responsive images
+  - Add `unoptimized` prop for external URLs that can't be optimized
+  - Handle image errors with state management (use `useState` to track `imageError`)
+  - Example pattern:
+    ```tsx
+    const [imageError, setImageError] = useState(false);
+    
+    {urlInput && !imageError && (
+      <div className="relative w-full h-48">
+        <Image
+          src={urlInput}
+          alt="Preview"
+          fill
+          className="object-contain"
+          unoptimized
+          onError={() => setImageError(true)}
+        />
+      </div>
+    )}
+    ```
+
+## React Patterns
+
+### useCallback Pattern
+When creating functions that are:
+- Used in `useEffect` dependencies
+- Passed to child components as props
+- Used in other hooks' dependency arrays
+
+Wrap them with `useCallback`:
+```tsx
+const myFunction = useCallback(() => {
+  // function logic
+}, [dependency1, dependency2]);
+```
+
+### useEffect Pattern
+- Always include all dependencies in the dependency array
+- If a dependency is intentionally excluded, add an eslint-disable comment with explanation
+- For functions used in `useEffect`, ensure they're wrapped in `useCallback` with proper dependencies
+
+## Code Organization
+
+### File Structure
+- Keep component files focused and single-purpose
+- Use TypeScript for type safety
+- Export interfaces/types at the top of files when shared
+
+### Naming Conventions
+- Use descriptive names for functions and variables
+- Prefix callback functions with `handle` (e.g., `handleSubmit`, `handleSelectAddress`)
+- Use `useCallback` for memoized functions to avoid unnecessary re-renders
+
+### Prettier Code Formatting
+- **Prettier is configured and active** for consistent code formatting
+- **Configuration**: `.prettierrc` file with project-specific settings
+  - Single quotes for strings
+  - No semicolons
+  - 2-space indentation
+  - 80 character line width
+  - ES5 trailing commas
+- **When to format**:
+  - **After making code changes**: Run `npm run format` to format all files
+  - **Before committing**: Run `npm run format:check` to verify formatting
+  - **During development**: Format specific files or directories as needed
+  - **At regular intervals**: Format the entire codebase periodically (e.g., weekly or after major features)
+- **Formatting commands**:
+  ```bash
+  npm run format          # Format all files in the project
+  npm run format:check    # Check if files are formatted (CI-friendly)
+  npx prettier --write <file>  # Format a specific file
+  npx prettier --write "app/**/*.{ts,tsx}"  # Format specific file types
+  ```
+- **Integration with ESLint**: `eslint-config-prettier` is configured to disable ESLint rules that conflict with Prettier
+- **Ignored files**: `.prettierignore` excludes build artifacts, dependencies, and generated files
+- **Editor integration**: Configure your editor to format on save using Prettier
+
+## Best Practices
+
+1. **Run linting before committing**: Always run `npm run lint` to catch issues early
+2. **Format code regularly**: Run `npm run format` after making changes or at regular intervals
+3. **Fix warnings, not just errors**: Address all ESLint warnings to maintain code quality
+4. **Use proper React patterns**: Leverage `useCallback`, `useMemo`, and proper dependency arrays
+5. **Optimize images**: Always use Next.js `Image` component for better performance
+6. **Escape JSX entities**: Prevent React warnings by properly escaping special characters
+
+## Common Pitfalls to Avoid
+
+1. ❌ Using `<img>` instead of Next.js `Image` component
+2. ❌ Missing dependencies in `useEffect` or `useCallback` arrays
+3. ❌ Unescaped apostrophes and quotes in JSX text
+4. ❌ Functions in `useEffect` dependencies without `useCallback`
+5. ❌ Ignoring ESLint warnings about exhaustive dependencies
+
+## Testing
+
+- Run `npm run lint` regularly during development
+- Run `npm run format` after making code changes or at regular intervals
+- Fix linting issues immediately to prevent accumulation
+- Review linting output for patterns that can be improved
+- Ensure code is formatted before committing changes
+
+---
+
+## Project Architecture
+
+### Technology Stack
+- **Next.js 14** with App Router (file-based routing in `app/` directory)
+- **TypeScript** for type safety (strict mode enabled)
+- **Supabase** for database, authentication, and storage
+- **NextAuth.js** for session management
+- **shadcn/ui** for UI components (Radix UI + Tailwind CSS)
+- **React Query** (@tanstack/react-query) for server state management
+- **Node.js 20+** required (use `nvm use 20` to switch versions)
+
+### Component Architecture
+- **Server Components by default**: Fetch data directly, no client-side JavaScript
+- **Client Components when needed**: Mark with `"use client"` for interactivity, state, or browser APIs
+- **Hybrid Pattern**: Server component fetches data → passes to client component for interactivity
+
+### File Organization
+```
+app/                    # Next.js App Router
+├── api/               # API routes (Next.js API routes)
+├── admin/             # Admin pages (protected by middleware)
+├── auth/              # Authentication pages
+├── blog/              # Blog pages
+├── shop/              # Shop/product pages
+└── profile/           # User profile pages
+
+lib/                    # Utilities and helpers
+├── supabase/          # Supabase clients (client.ts, server.ts)
+├── api/               # API client configuration (React Query)
+├── utils/             # Helper functions
+└── types/             # TypeScript types
+
+components/             # React components
+├── layout/            # Layout components (header, footer)
+├── sections/         # Page sections (hero, products, etc.)
+└── ui/                # shadcn/ui components
+
+contexts/               # React contexts (cart, auth, toast)
+hooks/                  # Custom React hooks
+```
+
+---
+
+## API Route Patterns
+
+### Standard API Route Structure
+```typescript
+import { NextRequest, NextResponse } from "next/server"
+import { getServerSession } from "next-auth"
+import { authOptions } from "@/lib/auth-options"
+import { supabaseAdmin } from "@/lib/supabase/server"
+
+export async function GET(request: NextRequest) {
+  try {
+    // Authentication check
+    const session = await getServerSession(authOptions)
+    if (!session?.user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    }
+
+    // Admin-only check (if needed)
+    if (session.user.role !== "admin") {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+    }
+
+    // Business logic
+    const { data, error } = await supabaseAdmin.from("table").select("*")
+
+    if (error) {
+      return NextResponse.json({ error: error.message }, { status: 500 })
+    }
+
+    return NextResponse.json({ data })
+  } catch (error) {
+    console.error("Error in GET /api/route:", error)
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
+  }
+}
+```
+
+### API Route Conventions
+- **Always use try-catch**: Wrap all logic in try-catch blocks
+- **Consistent error responses**: Use `NextResponse.json({ error: "message" }, { status: code })`
+- **Authentication first**: Check session before business logic
+- **Role-based access**: Check `session.user.role` for admin routes
+- **Use supabaseAdmin**: Always use `supabaseAdmin` from `@/lib/supabase/server` for API routes
+- **Error logging**: Log errors with `console.error` for debugging
+- **HTTP status codes**: Use appropriate status codes (200, 400, 401, 403, 404, 500)
+
+### Dynamic Routes
+```typescript
+export async function GET(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  const { id } = params
+  // Use params.id
+}
+```
+
+---
+
+## Authentication Patterns
+
+### Authentication Flow
+- **NextAuth.js** handles session management
+- **Supabase Auth** handles user authentication
+- **Phone number support**: Converts phone numbers to `{phone}@heldeelife.com` format
+- **Role-based access**: Users have `user` or `admin` role
+
+### Authentication Utilities
+- Use `toEmailFormat()` from `@/lib/auth-utils` to convert phone/email to email format
+- Use `extractPhoneFromEmail()` to get phone number from email format
+- Use `isPhoneNumber()` to validate phone numbers
+- Use `normalizePhoneNumber()` to clean phone number strings
+
+### Session Access
+```typescript
+// In API routes
+import { getServerSession } from "next-auth"
+import { authOptions } from "@/lib/auth-options"
+
+const session = await getServerSession(authOptions)
+if (!session?.user) {
+  return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+}
+
+// In client components
+import { useSession } from "next-auth/react"
+const { data: session, status } = useSession()
+```
+
+### Role Checking
+```typescript
+// In API routes
+if (session.user.role !== "admin") {
+  return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+}
+
+// In client components
+import { hasAdminRole } from "@/lib/utils/auth"
+if (!hasAdminRole(session.user)) {
+  router.push("/")
+}
+```
+
+### Middleware Protection
+- Routes protected in `middleware.ts`:
+  - `/admin/*` → Requires authentication + admin role
+  - `/profile/*` → Requires authentication
+  - `/cart/*` → Requires authentication
+  - `/checkout/*` → Requires authentication
+
+---
+
+## Database Patterns
+
+### Supabase Client Usage
+- **Client-side**: Use `createClient()` from `@/lib/supabase/client`
+- **Server-side (API routes)**: Use `supabaseAdmin` from `@/lib/supabase/server`
+- **Server-side (Server Components)**: Use `createServerClient()` from `@/lib/supabase/server`
+
+### Query Patterns
+```typescript
+// Basic select
+const { data, error } = await supabaseAdmin
+  .from("table")
+  .select("*")
+  .eq("column", value)
+
+// With relations
+const { data, error } = await supabaseAdmin
+  .from("orders")
+  .select(`
+    *,
+    order_items (
+      id,
+      product_name,
+      quantity
+    )
+  `)
+
+// Filtering
+.eq("status", "published")
+.gte("created_at", date)
+.order("created_at", { ascending: false })
+.limit(10)
+```
+
+### Error Handling
+- Always check for `error` after Supabase queries
+- Return appropriate HTTP status codes
+- Log errors for debugging
+
+### Row Level Security (RLS)
+- All tables have RLS enabled
+- Policies handle:
+  - Public: Can read published content/products
+  - Authenticated: Can create orders, view own data
+  - Admin: Full access to all resources
+
+---
+
+## State Management Patterns
+
+### React Context
+- **Cart Context**: `contexts/cart-context.tsx` - Manages shopping cart state
+- **Auth Context**: `contexts/auth-context.tsx` - Auth state (if needed)
+- **Toast Context**: `contexts/toast-context.tsx` - Toast notifications
+
+### React Query (TanStack Query)
+- **Configuration**: `lib/api/config.ts` - Global query client config
+- **Cache times**: Defined in `lib/constants`
+- **Query hooks**: Custom hooks in `hooks/api/` directory
+- **Pattern**: Use React Query for server state, Context for client state
+
+### Local Storage
+- Cart state persists to localStorage
+- Use `useLocalStorage` hook from `hooks/use-local-storage.ts`
+
+---
+
+## Component Patterns
+
+### Server Components (Default)
+- Fetch data directly from Supabase
+- No `"use client"` directive
+- Better performance and SEO
+- Example: `app/blog/page.tsx`, `app/shop/page.tsx`
+
+### Client Components
+- Mark with `"use client"` at the top
+- Used for:
+  - Interactive UI (forms, buttons, modals)
+  - State management (useState, useEffect)
+  - Browser APIs (localStorage, window)
+  - Event handlers
+
+### Form Handling
+- Use **React Hook Form** with **Zod** validation
+- Pattern:
+```typescript
+import { useForm } from "react-hook-form"
+import { zodResolver } from "@hookform/resolvers/zod"
+import * as z from "zod"
+
+const schema = z.object({
+  name: z.string().min(1, "Name is required"),
+  email: z.string().email("Invalid email"),
+})
+
+const { register, handleSubmit, formState: { errors } } = useForm({
+  resolver: zodResolver(schema),
+})
+```
+
+### UI Components (shadcn/ui)
+- All components in `components/ui/`
+- Use `cn()` utility for class merging
+- Variants using `class-variance-authority`
+- Import pattern: `import { Button } from "@/components/ui/button"`
+
+### Checkout Page Patterns
+
+#### Address Selection UI/UX Pattern
+The checkout page (`app/checkout/page.tsx`) implements a streamlined address selection pattern that reduces friction and improves user experience:
+
+**Key Principles**:
+1. **Auto-select default address**: Automatically select and use the user's default saved address on page load
+2. **Conditional form display**: Only show the address form when:
+   - User explicitly selects "Enter new address" from dropdown
+   - No saved addresses exist (guest checkout or new user)
+3. **Hide form when address selected**: When a saved address is selected, hide the entire form to reduce visual clutter
+4. **Scrollable address list**: Use fixed height with overflow for address dropdowns to handle multiple addresses without increasing page height
+
+**Implementation Pattern**:
+```typescript
+// State management
+const [selectedAddressId, setSelectedAddressId] = useState<string>('')
+const [showAddressForm, setShowAddressForm] = useState(false)
+
+// Auto-select default address on load
+useEffect(() => {
+  if (session) {
+    fetch('/api/addresses')
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.addresses) {
+          setSavedAddresses(data.addresses)
+          const defaultAddress = data.addresses.find(
+            (a: SavedAddress) => a.is_default
+          )
+          if (defaultAddress) {
+            handleSelectAddress(defaultAddress)
+            setShowAddressForm(false) // Hide form when default is selected
+          } else if (data.addresses.length === 0) {
+            setShowAddressForm(true) // Show form if no addresses
+          }
+        }
+      })
+  } else {
+    setShowAddressForm(true) // Guest checkout, show form
+  }
+}, [session])
+
+// Handle address selection
+const handleSelectAddress = (address: SavedAddress) => {
+  setSelectedAddressId(address.id)
+  setShowAddressForm(false) // Hide form when address is selected
+  // Populate form data with selected address
+}
+
+// Conditional rendering
+{savedAddresses.length > 0 && (
+  <Select onValueChange={(value) => {
+    if (value === 'new') {
+      setSelectedAddressId('new')
+      setShowAddressForm(true) // Show form when "new" is selected
+    } else {
+      handleSelectAddress(address)
+    }
+  }}>
+    <SelectContent className="max-h-[300px] overflow-y-auto">
+      {/* Scrollable address list */}
+    </SelectContent>
+  </Select>
+)}
+
+{(showAddressForm || savedAddresses.length === 0) && (
+  <div className="space-y-4 pt-4 border-t">
+    {/* Address form - only shown when needed */}
+  </div>
+)}
+```
+
+**Best Practices**:
+1. **Auto-select default**: Always select the default address automatically on page load
+2. **Visual feedback**: Show a confirmation box (green background) when an address is selected
+3. **Easy add new**: Provide an "Add New" button next to selected address for quick access
+4. **Scrollable dropdowns**: Use `max-h-[300px] overflow-y-auto` on SelectContent for long lists
+5. **Same pattern for billing**: Apply identical pattern for billing address selection
+6. **Guest checkout**: Always show form for guest users (no saved addresses)
+7. **State synchronization**: Keep form data populated even when form is hidden (for validation)
+
+**Benefits**:
+- Reduces visual clutter and cognitive load
+- Faster checkout for returning customers
+- Better mobile experience (less scrolling)
+- Clearer user flow (form only when needed)
+- Improved conversion rates (less friction)
+
+---
+
+## Profile Page Patterns
+
+### Profile Page Structure
+The profile page (`app/profile/page.tsx`) follows a comprehensive pattern that combines ecommerce features with psychological principles:
+
+#### Key Components
+1. **Account Statistics Dashboard** (Social Proof)
+   - Display total orders, total spent, wishlist count, pending orders
+   - Use card-based layout with icons and numbers
+   - Fetch stats using `useCallback` with `Promise.all` for parallel requests
+   - Pattern:
+   ```typescript
+   const [stats, setStats] = useState<AccountStats>({...})
+   const fetchStats = useCallback(async () => {
+     const [ordersRes, wishlistRes, addressesRes, paymentsRes] = 
+       await Promise.all([...])
+     // Aggregate and set stats
+   }, [session])
+   ```
+
+2. **Account Completion Progress** (Zeigarnik Effect)
+   - Calculate completion percentage based on:
+     - Address added (25%)
+     - Payment method added (25%)
+     - Name set (25%)
+     - Phone number set (25%)
+   - Display with Progress component and helpful messaging
+   - Pattern:
+   ```typescript
+   const accountCompletion = Math.min(100, Math.round(
+     ((addressesCount > 0 ? 25 : 0) +
+      (paymentMethodsCount > 0 ? 25 : 0) +
+      (name ? 25 : 0) +
+      (phoneNumber ? 25 : 0)) / 1
+   ))
+   ```
+
+3. **Incomplete Tasks Reminder** (Zeigarnik Effect)
+   - Show actionable reminders for missing profile elements
+   - Use alert-style cards with icons and CTAs
+   - Only show when tasks are incomplete
+   - Pattern:
+   ```typescript
+   const incompleteTasks = [
+     addressesCount === 0 && { title: 'Add address', href: '/profile/addresses', ... },
+     paymentMethodsCount === 0 && { title: 'Add payment', href: '/profile/payments', ... },
+     !phoneNumber && { title: 'Add phone', href: '/profile/settings', ... },
+   ].filter(Boolean)
+   ```
+
+4. **Quick Access Cards** (Gestalt Principles)
+   - Group related account management features
+   - Show counts/badges for items (orders, addresses, etc.)
+   - Use hover effects and transitions
+   - Include helpful hints for empty states
+
+#### Profile Settings Page Pattern
+- **Location**: `app/profile/settings/page.tsx`
+- **Features**:
+  - Profile information editing (name, phone)
+  - Security section (password change, verification status)
+  - Trust indicators (security messaging)
+  - Form validation and error handling
+- **API Pattern**: `PUT /api/auth/update-profile`
+  - Updates both Supabase Auth metadata and users table
+  - Uses `normalizePhoneNumber()` for phone formatting
+  - Returns updated user data
+  - Pattern:
+  ```typescript
+  // Update auth metadata
+  await supabaseAdmin.auth.admin.updateUserById(userId, {
+    data: { full_name: name, phone_number: phone }
+  })
+  // Update users table
+  await supabaseAdmin.from('users').update({
+    full_name: name,
+    phone_number: phone,
+    updated_at: new Date().toISOString()
+  }).eq('id', userId)
+  ```
+
+#### Orders Page Enhancement Pattern
+- **Statistics Dashboard**: Show total orders, total spent, delivered count
+- **Visual Hierarchy**: 
+  - Order cards with status badges
+  - Payment status indicators
+  - Clear item listings
+  - Prominent "Track Order" CTAs
+- **Social Proof**: Display order statistics prominently
+- **Pattern**:
+  ```typescript
+  const totalSpent = orders.reduce((sum, order) => 
+    sum + (order.payment_status === 'paid' ? Number(order.total_amount) : 0), 0
+  )
+  const deliveredCount = orders.filter(o => o.status === 'delivered').length
+  ```
+
+### Profile Page Psychological Principles Applied
+
+1. **Social Proof**: Account statistics (orders, spending, wishlist)
+2. **Progress Indicators**: Account completion percentage
+3. **Zeigarnik Effect**: Incomplete task reminders
+4. **Trust Signals**: Verified badges, security messaging
+5. **Visual Hierarchy**: Important info first, clear grouping
+6. **Fitts' Law**: Large, easy-to-click cards and buttons
+7. **Gestalt Principles**: Related items grouped together
+8. **Von Restorff Effect**: Highlighted incomplete tasks
+
+### Profile Page Best Practices
+
+1. **Always fetch stats in parallel** using `Promise.all` for better performance
+2. **Use `useCallback`** for data fetching functions to prevent unnecessary re-renders
+3. **Show progress indicators** to encourage profile completion
+4. **Display statistics** to provide social proof and engagement
+5. **Include incomplete task reminders** to drive action (Zeigarnik Effect)
+6. **Use consistent card layouts** for all account management sections
+7. **Show counts/badges** on cards to provide quick information
+8. **Include helpful empty states** with clear CTAs
+9. **Update session after profile changes** using `update()` from `useSession()`
+10. **Handle loading states** gracefully with skeleton loaders or spinners
+
+### Profile API Patterns
+
+#### Update Profile Endpoint
+- **Route**: `PUT /api/auth/update-profile`
+- **Authentication**: Required (session check)
+- **Updates**: Both Supabase Auth metadata and users table
+- **Validation**: Name required, phone optional (normalized)
+- **Response**: Success message with updated user data
+- **Error Handling**: Try-catch with appropriate status codes
+
+#### Stats Fetching Pattern
+- Fetch multiple resources in parallel
+- Aggregate data client-side
+- Handle errors gracefully
+- Show loading states
+- Cache results appropriately
+
+---
+
+## Styling Patterns
+
+### Tailwind CSS
+- Utility-first approach
+- Custom color palette in `tailwind.config.ts`
+- Responsive design: `sm:`, `md:`, `lg:`, `xl:` breakpoints
+- Use `cn()` from `@/lib/utils` for conditional classes
+
+### Color Scheme
+- Primary: Orange (`orange-600`, `orange-700`)
+- Background: Gradient (`from-slate-50 via-white to-orange-50/40`)
+- Text: Gray scale (`gray-900`, `gray-600`, `gray-500`)
+
+### Component Styling
+- Consistent spacing and typography
+- Rounded corners: `rounded-lg`
+- Shadows: `shadow-md`, `shadow-xl`
+- Transitions: `transition-all duration-200`
+
+---
+
+## Development Workflow
+
+### Environment Setup
+- **Node.js 20+**: Use `nvm use 20` to switch versions
+- **Environment variables**: Required in `.env.local`
+  - Supabase credentials
+  - NextAuth configuration
+  - Site URL
+
+### Scripts
+```bash
+npm run dev          # Development server
+npm run build        # Production build
+npm run start        # Production server
+npm run lint         # ESLint check
+npm run format       # Format all files with Prettier
+npm run format:check # Check formatting without making changes
+npm test             # Run tests (Vitest)
+```
+
+### Code Quality
+- **TypeScript**: Strict mode enabled
+- **ESLint**: Next.js configuration with Prettier integration
+- **Prettier**: Code formatting configured and active
+- Always run `npm run lint` before committing
+- Run `npm run format` to format all files, or `npm run format:check` to check formatting
+
+### Git Workflow
+- Feature branches for new features
+- Commit messages should be descriptive
+- Don't commit `.env` files or `node_modules`
+
+---
+
+## Important Conventions
+
+### Import Order
+1. React/Next.js imports
+2. Third-party libraries
+3. Internal utilities (`@/lib/*`)
+4. Components (`@/components/*`)
+5. Types
+6. Relative imports
+
+### Naming Conventions
+- **Components**: PascalCase (`ProductCard.tsx`)
+- **Files**: Match component name
+- **Functions**: camelCase (`fetchProducts`, `handleSubmit`)
+- **Constants**: UPPER_SNAKE_CASE (`MAX_FILE_SIZE`)
+- **Types/Interfaces**: PascalCase (`Product`, `OrderItem`)
+
+### TypeScript Patterns
+- Define types in `lib/types/` for shared types
+- Use interfaces for object shapes
+- Use types for unions, intersections, primitives
+- Export types at the top of files when shared
+
+### Error Handling
+- **API routes**: Try-catch with proper HTTP status codes
+- **Client components**: User-friendly error messages
+- **Forms**: Validation errors via React Hook Form
+- **Logging**: Use `console.error` for debugging
+
+### Performance
+- Use Next.js `Image` component for images
+- Static generation for blog posts and product pages
+- ISR (Incremental Static Regeneration) for dynamic content
+- Code splitting automatic with Next.js
+- Database indexes on frequently queried columns
+
+### Static Pages (Legal/Policy Pages)
+- **Always use Server Components** for static legal pages (privacy, terms, cookie policy, FAQ, help, shipping, refund)
+- **Never use "use client"** for static content pages
+- **Add metadata exports** for SEO and proper page titles
+- **Force static generation** with `export const dynamic = 'force-static'`
+- **Pattern**:
+  ```typescript
+  import { Metadata } from 'next'
+  
+  export const metadata: Metadata = {
+    title: 'Page Title | heldeelife',
+    description: 'Page description for SEO',
+  }
+  
+  export const dynamic = 'force-static'
+  
+  export default function Page() {
+    // Static content only
+  }
+  ```
+- **Client components only when needed**: Use client components for interactive elements (forms, buttons with state) but keep the page itself as a server component
+- **Example**: Contact page is server component, but uses `<ContactForm />` which is a client component for form interactivity
+
+---
+
+## Common Patterns Reference
+
+### Fetching Data in Server Components
+```typescript
+import { createServerClient } from "@/lib/supabase/server"
+
+export default async function Page() {
+  const supabase = createServerClient()
+  const { data, error } = await supabase.from("table").select("*")
+  
+  if (error) {
+    // Handle error
+  }
+  
+  return <div>{/* Render data */}</div>
+}
+```
+
+### Protected Page Pattern
+```typescript
+"use client"
+import { useSession } from "next-auth/react"
+import { useRouter } from "next/navigation"
+import { useEffect } from "react"
+
+export default function ProtectedPage() {
+  const { data: session, status } = useSession()
+  const router = useRouter()
+
+  useEffect(() => {
+    if (status === "unauthenticated") {
+      router.push("/auth/signin")
+    }
+  }, [status, router])
+
+  if (status === "loading") return <div>Loading...</div>
+  if (!session) return null
+
+  return <div>Protected Content</div>
+}
+```
+
+### Toast Notifications
+```typescript
+import { toast } from "sonner"
+
+toast.success("Operation successful!")
+toast.error("Something went wrong")
+toast.info("Information message")
+```
+
+---
+
+## Database Changes and Migrations
+
+### Migration File Structure
+- **Location**: All migrations go in `supabase/migrations/` directory
+- **Naming**: Use sequential numbering with descriptive names
+  - Format: `XXX_descriptive_name.sql` (e.g., `009_add_user_preferences.sql`)
+  - Always increment the number from the highest existing migration
+- **Idempotency**: All migrations must be idempotent (safe to run multiple times)
+
+### Migration File Template
+```sql
+-- ============================================
+-- Migration: Descriptive Name
+-- ============================================
+-- Brief description of what this migration does
+-- Date: YYYY-MM-DD
+-- ============================================
+
+-- Schema changes
+-- Indexes
+-- Functions/Triggers
+-- Comments
+```
+
+### Schema Changes
+
+#### Adding Columns
+```sql
+-- Always use IF NOT EXISTS for safety
+ALTER TABLE table_name
+  ADD COLUMN IF NOT EXISTS column_name TYPE,
+  ADD COLUMN IF NOT EXISTS column_name2 TYPE;
+
+-- Add comments for documentation
+COMMENT ON COLUMN table_name.column_name IS 'Description of the column';
+```
+
+#### Modifying Columns
+```sql
+-- Change column type (be careful with data loss)
+ALTER TABLE table_name
+  ALTER COLUMN column_name TYPE new_type;
+
+-- Add NOT NULL constraint (ensure no nulls exist first)
+ALTER TABLE table_name
+  ALTER COLUMN column_name SET NOT NULL;
+
+-- Add default value
+ALTER TABLE table_name
+  ALTER COLUMN column_name SET DEFAULT default_value;
+```
+
+#### Creating Tables
+```sql
+CREATE TABLE IF NOT EXISTS table_name (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  column_name TYPE NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT now(),
+  updated_at TIMESTAMPTZ DEFAULT now(),
+  -- Foreign keys
+  CONSTRAINT fk_name FOREIGN KEY (column_id) 
+    REFERENCES other_table(id) ON DELETE CASCADE
+);
+
+-- Add comments
+COMMENT ON TABLE table_name IS 'Description of the table';
+```
+
+#### Dropping Columns/Tables
+```sql
+-- Only drop if truly necessary (prefer deprecation)
+-- Always use IF EXISTS
+ALTER TABLE table_name
+  DROP COLUMN IF EXISTS column_name;
+
+DROP TABLE IF EXISTS table_name CASCADE;
+```
+
+### Index Management
+
+#### When to Create Indexes
+- **Foreign keys**: Always index foreign key columns
+- **Frequently filtered columns**: Status, category_id, user_id, etc.
+- **Frequently sorted columns**: created_at, updated_at, price, rating
+- **Search columns**: Name, title, description (use GIN indexes for text search)
+- **Composite queries**: Create composite indexes for common query patterns
+
+#### Index Types
+
+**B-tree Indexes (Default)**
+```sql
+-- Single column
+CREATE INDEX IF NOT EXISTS idx_table_column 
+  ON table_name(column_name);
+
+-- Composite index (order matters - most selective first)
+CREATE INDEX IF NOT EXISTS idx_table_col1_col2 
+  ON table_name(column1, column2);
+
+-- Partial index (with WHERE clause)
+CREATE INDEX IF NOT EXISTS idx_table_active 
+  ON table_name(column_name) 
+  WHERE is_active = true;
+
+-- Partial composite index
+CREATE INDEX IF NOT EXISTS idx_products_category_active 
+  ON products(category_id, is_active, created_at DESC) 
+  WHERE is_active = true;
+```
+
+**GIN Indexes (Full-text search)**
+```sql
+-- Enable extension first
+CREATE EXTENSION IF NOT EXISTS pg_trgm;
+
+-- Create GIN index for text search
+CREATE INDEX IF NOT EXISTS idx_products_name_trgm 
+  ON products USING gin(name gin_trgm_ops);
+
+-- For array columns
+CREATE INDEX IF NOT EXISTS idx_products_tags_gin 
+  ON products USING gin(tags);
+```
+
+**Index Naming Convention**
+- Format: `idx_{table}_{columns}_{purpose}`
+- Examples:
+  - `idx_products_category_active_created` - composite index
+  - `idx_orders_user_status_created` - user orders by status
+  - `idx_blog_posts_status_published` - published posts
+  - `idx_products_name_trgm` - text search index
+
+#### Index Best Practices
+1. **Composite indexes**: Order columns by selectivity (most selective first)
+2. **Partial indexes**: Use WHERE clauses to reduce index size
+3. **Covering indexes**: Include frequently selected columns in composite indexes
+4. **Avoid over-indexing**: Don't create indexes for rarely queried columns
+5. **Monitor usage**: Use `EXPLAIN ANALYZE` to verify index usage
+6. **ANALYZE after changes**: Run `ANALYZE table_name;` after schema changes
+
+### Common Index Patterns
+
+#### User-based Queries
+```sql
+-- User's orders
+CREATE INDEX IF NOT EXISTS idx_orders_user_status_created 
+  ON orders(user_id, status, created_at DESC);
+
+-- User's reviews
+CREATE INDEX IF NOT EXISTS idx_reviews_user_created 
+  ON reviews(user_id, created_at DESC);
+```
+
+#### Status Filtering
+```sql
+-- Active products
+CREATE INDEX IF NOT EXISTS idx_products_active_featured 
+  ON products(is_active, is_featured, created_at DESC) 
+  WHERE is_active = true;
+
+-- Published blog posts
+CREATE INDEX IF NOT EXISTS idx_blog_posts_status_published 
+  ON blog_posts(status, published_at DESC NULLS LAST) 
+  WHERE status = 'published';
+```
+
+#### Category Filtering
+```sql
+-- Products by category
+CREATE INDEX IF NOT EXISTS idx_products_category_active_created 
+  ON products(category_id, is_active, created_at DESC) 
+  WHERE is_active = true;
+```
+
+#### Sorting Indexes
+```sql
+-- Price sorting
+CREATE INDEX IF NOT EXISTS idx_products_active_price 
+  ON products(is_active, price) 
+  WHERE is_active = true;
+
+-- Rating sorting (NULLS LAST for better ordering)
+CREATE INDEX IF NOT EXISTS idx_products_active_rating 
+  ON products(is_active, rating DESC NULLS LAST) 
+  WHERE is_active = true;
+```
+
+### Functions and Triggers
+
+#### Creating Functions
+```sql
+CREATE OR REPLACE FUNCTION function_name()
+RETURNS TRIGGER AS $$
+BEGIN
+  -- Function logic
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+```
+
+#### Creating Triggers
+```sql
+-- Drop existing trigger first
+DROP TRIGGER IF EXISTS trigger_name ON table_name;
+
+-- Create trigger
+CREATE TRIGGER trigger_name
+  AFTER INSERT OR UPDATE OF column_name ON table_name
+  FOR EACH ROW
+  EXECUTE FUNCTION function_name();
+```
+
+### Migration Checklist
+
+When creating a database migration:
+
+1. ✅ **Create migration file** in `supabase/migrations/` with proper naming
+2. ✅ **Add header comment** explaining the migration purpose
+3. ✅ **Use IF NOT EXISTS/IF EXISTS** for idempotency
+4. ✅ **Add indexes** for new foreign keys and frequently queried columns
+5. ✅ **Add composite indexes** for common query patterns
+6. ✅ **Add comments** to document columns and tables
+7. ✅ **Test migration** on development database first
+8. ✅ **Run ANALYZE** on affected tables after migration
+9. ✅ **Update RLS policies** if new tables/columns affect security
+10. ✅ **Document breaking changes** in migration comments
+
+### Example: Complete Migration
+
+```sql
+-- ============================================
+-- Migration: Add User Preferences Table
+-- ============================================
+-- Creates user_preferences table for storing
+-- user-specific settings and preferences
+-- ============================================
+
+-- Create table
+CREATE TABLE IF NOT EXISTS user_preferences (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  preference_key TEXT NOT NULL,
+  preference_value JSONB,
+  created_at TIMESTAMPTZ DEFAULT now(),
+  updated_at TIMESTAMPTZ DEFAULT now(),
+  UNIQUE(user_id, preference_key)
+);
+
+-- Add comments
+COMMENT ON TABLE user_preferences IS 'User-specific preferences and settings';
+COMMENT ON COLUMN user_preferences.preference_key IS 'Key identifier for the preference';
+COMMENT ON COLUMN user_preferences.preference_value IS 'JSON value for the preference';
+
+-- Create indexes
+CREATE INDEX IF NOT EXISTS idx_user_preferences_user 
+  ON user_preferences(user_id);
+
+CREATE INDEX IF NOT EXISTS idx_user_preferences_key 
+  ON user_preferences(preference_key);
+
+-- Composite index for common query
+CREATE INDEX IF NOT EXISTS idx_user_preferences_user_key 
+  ON user_preferences(user_id, preference_key);
+
+-- Update table statistics
+ANALYZE user_preferences;
+```
+
+### RLS (Row Level Security) Updates
+
+When adding new tables or columns:
+1. **Enable RLS** on new tables: `ALTER TABLE table_name ENABLE ROW LEVEL SECURITY;`
+2. **Create policies** for public, authenticated, and admin access
+3. **Test policies** to ensure proper access control
+
+### Performance Considerations
+
+1. **Index maintenance**: Indexes slow down INSERT/UPDATE operations
+2. **Partial indexes**: Use WHERE clauses to reduce index size
+3. **Composite indexes**: More efficient than multiple single-column indexes
+4. **GIN indexes**: Great for text search but larger than B-tree
+5. **Monitor query performance**: Use `EXPLAIN ANALYZE` regularly
+
+### Migration Testing
+
+Before applying migrations:
+1. Test on development database
+2. Verify indexes are used: `EXPLAIN ANALYZE SELECT ...`
+3. Check for performance regressions
+4. Ensure RLS policies work correctly
+5. Test rollback scenarios (if needed)
+
+---
+
+## Memory Bank
+
+- **Project documentation**: See `memory-bank/` directory
+- **Project brief**: `memory-bank/projectbrief.md`
+- **System patterns**: `memory-bank/systemPatterns.md`
+- **Tech context**: `memory-bank/techContext.md`
+- **Active context**: `memory-bank/activeContext.md`
+- **Progress**: `memory-bank/progress.md`
+
+Always refer to memory bank files for project context and current state.
+
+---
+
+## Psychological Principles & Conversion Optimization
+
+This project applies research-backed psychological principles and conversion optimization strategies throughout the user experience. Always consider these principles when designing or updating components.
+
+### Core Psychological Principles
+
+#### 1. **AIDA Framework (Attention, Interest, Desire, Action)**
+- **Attention**: Capture immediately with trust badges, social proof, clear headlines
+- **Interest**: Build with value propositions, benefits, and clear differentiation
+- **Desire**: Create through problem-solution framework, emotional triggers, success stories
+- **Action**: Guide with multiple strategically placed CTAs, Fitts' Law compliance, clear next steps
+
+**Application**:
+- Hero sections: Trust badges → Value prop → Benefits → CTAs
+- Product pages: Attention-grabbing images → Interest-building descriptions → Desire-creating benefits → Clear purchase CTAs
+- Homepage flow: Hero → Trust → Value → Problem-Solution → Products → Testimonials → Risk Reversal
+
+#### 2. **Maslow's Hierarchy of Needs (Applied to UX)**
+- **Functionality**: Fast, reliable site performance (no errors, quick load times)
+- **Reliability**: Trust signals, guarantees, consistent experience
+- **Usability**: Clear navigation, intuitive design, easy to use
+- **Proficiency**: Expert guidance, consultations, educational content
+- **Creativity**: Beautiful design, brand identity, engaging visuals
+
+**Application**:
+- Always ensure basic functionality before adding advanced features
+- Build trust before asking for conversions
+- Provide expert guidance and educational content
+- Maintain beautiful, authentic brand design
+
+#### 3. **Hick's Law (Reduced Choice Paralysis)**
+- Limit options to prevent decision paralysis
+- Streamline navigation (max 5-7 main items)
+- Clear primary CTAs (one main action per section)
+- Logical content grouping
+- Simplified decision-making process
+
+**Application**:
+- Navigation menus: Max 7 items
+- Product filters: Grouped logically, not overwhelming
+- CTAs: One primary, one secondary max per section
+- Categories: Clear, distinct groupings
+
+#### 4. **Gestalt Principles (Visual Organization)**
+- **Proximity**: Group related elements together
+- **Similarity**: Use consistent design patterns, colors, shapes
+- **Continuity**: Create smooth visual flow, guide eye movement
+- **Closure**: Complete visual elements, avoid broken designs
+- **Figure/Ground**: Clear distinction between content and background
+
+**Application**:
+- Related features grouped in same section
+- Consistent button styles, colors, spacing
+- Smooth scrolling, visual flow between sections
+- Complete card designs, no broken layouts
+
+#### 5. **Fitts' Law (Accessibility & Interaction)**
+- Large, easily clickable CTAs (minimum 44x44px on mobile)
+- Prominent button placement (above fold, easy to reach)
+- Adequate spacing between interactive elements
+- Mobile-optimized touch targets
+- Reduce distance to target (place CTAs near relevant content)
+
+**Application**:
+- Buttons: Minimum 44px height on mobile, 48px preferred
+- CTA placement: Near relevant content, not far away
+- Spacing: Adequate gap between clickable elements
+- Mobile: Larger touch targets, thumb-friendly zones
+
+#### 6. **Von Restorff Effect (Isolation Effect)**
+- Highlight key elements to make them stand out
+- Distinctive design for important sections (CTAs, guarantees)
+- Visual hierarchy emphasizing critical information
+- Use contrast, color, size to isolate important elements
+
+**Application**:
+- Primary CTAs: Orange color, larger size, prominent placement
+- Guarantees: Highlighted with distinct background
+- Important info: Larger text, different color, icons
+- Special offers: Badges, distinct styling
+
+#### 7. **Social Proof**
+- Customer testimonials with ratings and verified badges
+- Trust badges and certifications (GMP, ISO, FDA)
+- Statistics (50K+ customers, 4.8★ rating, 10,000+ reviews)
+- Recent purchases ("5 people bought this recently")
+- Sales counts ("100+ sold this month")
+- Verified purchase indicators
+
+**Application**:
+- Homepage: Trust signals section, testimonials with stats
+- Product pages: Reviews, ratings, sales counts, recent purchases
+- Throughout site: Trust badges, certifications, customer counts
+- Always show: Ratings, review counts, verified badges
+
+#### 8. **Reciprocity Principle**
+- Offer value first (free shipping, expert consultations, educational content)
+- Give before asking (free resources, discounts, helpful content)
+- Create sense of obligation through value provision
+- Free consultations, cash rewards, educational articles
+
+**Application**:
+- Newsletter: Offer ₹100 cash on subscription
+- Consultations: Free initial consultation offers
+- Content: Educational blog posts, wellness tips
+- Shipping: Free shipping thresholds
+
+#### 9. **Zeigarnik Effect (Incomplete Tasks)**
+- Progress indicators (checkout steps, form completion)
+- Incomplete task reminders (cart items, saved items)
+- Scroll indicators (show more content below)
+- Engagement prompts (continue reading, explore more)
+
+**Application**:
+- Checkout: Progress bar showing steps
+- Cart: Remind users of items left in cart
+- Forms: Show completion progress
+- Pages: Scroll indicators, "Explore More" prompts
+
+#### 10. **Risk Reversal**
+- Comprehensive guarantees (100% Authentic, 30-Day Returns)
+- Clear return policies
+- Quality assurance badges
+- Money-back guarantees
+- Secure payment indicators
+- Trust-building messaging
+
+**Application**:
+- Homepage: Dedicated Risk Reversal section
+- Product pages: Guarantee badges, return policy links
+- Checkout: Security badges, guarantee statements
+- Throughout: Trust signals, policy links
+
+#### 11. **Scarcity & Urgency**
+- Low stock warnings ("Only 3 left!")
+- Time-limited offers (countdown timers)
+- Limited quantity alerts
+- "Limited slots available" messaging
+- Sale countdown timers
+- Stock quantity indicators
+
+**Application**:
+- Product pages: Stock quantity, low stock alerts
+- Promotions: Countdown timers, limited time offers
+- Consultations: "Available today" indicators
+- Deals: Time-limited promotions
+
+#### 12. **Charm Pricing**
+- Use .99 endings ($19.99 vs $20.00)
+- Display savings clearly
+- Price anchoring (compare at price)
+- Show percentage discounts
+
+**Application**:
+- All prices: Use charm pricing format
+- Display: Current price, original price, savings
+- Format: ₹1,999.99 instead of ₹2,000.00
+- Show: "Save ₹500 (20% off)" messaging
+
+### Conversion Optimization Strategies
+
+#### Research-Backed Impact Metrics
+
+**High Impact (Implement First)**:
+- **Abandoned Cart Recovery**: 10-30% recovery rate
+- **Checkout Optimization**: 15-25% conversion improvement
+- **Charm Pricing**: 2-5% conversion increase
+- **Product Bundles**: 20-30% average order value increase
+- **Social Proof**: 15-25% conversion increase
+- **Live Chat**: 20-30% conversion increase
+
+**Medium Impact**:
+- **Price Drop Alerts**: 5-10% repeat purchases
+- **Back in Stock Notifications**: 15-20% recovered sales
+- **Urgency Indicators**: 10-20% immediate purchases
+- **Personalization**: 20-30% revenue increase
+
+**Combined Expected Impact**: 50-100% overall conversion rate increase
+
+#### Friction Reduction
+- Guest checkout (no account required)
+- Minimal form fields
+- One-click actions
+- Auto-fill capabilities
+- Progress indicators
+- Streamlined checkout flow
+
+#### Trust Building
+- Security badges (SSL, secure payment)
+- Money-back guarantees
+- Clear return policies
+- Certification display (GMP, ISO, FDA)
+- Expert endorsements
+- Professional design
+
+#### Value Perception
+- Charm pricing display
+- Savings calculation and highlighting
+- Free shipping thresholds
+- Bundle discounts
+- Compare at pricing
+- Value proposition clarity
+
+#### Personalization
+- Browsing history recommendations
+- Purchase history suggestions
+- Personalized offers
+- Dynamic content
+- Recently viewed products
+- "For You" sections
+
+#### Recovery Mechanisms
+- Abandoned cart emails (30-minute delay)
+- Price drop alerts
+- Back in stock notifications
+- Retargeting campaigns
+- Exit-intent popups
+- Cart recovery modals
+
+### Homepage Structure (Optimal Conversion Flow)
+
+Follow this order for maximum conversion:
+
+1. **Hero Enhanced** - Attention & Interest (AIDA: A, I)
+2. **Trust Signals** - Immediate credibility (Social Proof)
+3. **Value Proposition** - Desire building (AIDA: D)
+4. **Problem-Solution** - Pain point addressing (Zeigarnik)
+5. **Daily Deals** - Urgency & Scarcity
+6. **Products** - Show solutions (AIDA: A)
+7. **Categories** - Easy navigation (Hick's Law)
+8. **Promotions** - Additional incentives (Reciprocity)
+9. **Testimonials** - Social proof
+10. **Brand Story** - Authenticity & Trust
+11. **Risk Reversal** - Objection removal
+12. **Doctors** - Authority & Expertise
+13. **Insights** - Education & Value (Reciprocity)
+14. **Newsletter** - Lead capture
+
+### Component Design Guidelines
+
+#### CTAs (Calls-to-Action)
+- **Size**: Minimum 44px height on mobile, 48px preferred
+- **Placement**: Above fold, near relevant content
+- **Color**: Orange primary (#E55A2B), white text
+- **Language**: Action-oriented ("Shop Now", "Book Consultation", "Get Started")
+- **Hierarchy**: One primary, one secondary max per section
+- **Spacing**: Adequate gap between interactive elements
+
+#### Trust Signals
+- **Immediate**: Show at top of page/section
+- **Visual**: Icons, badges, certifications
+- **Quantified**: Numbers, statistics, ratings
+- **Verified**: Badges for verified purchases, certifications
+- **Consistent**: Same trust signals across all pages
+
+#### Social Proof
+- **Ratings**: Always show star ratings with counts
+- **Reviews**: Display review counts, verified badges
+- **Statistics**: Customer counts, sales numbers
+- **Recent Activity**: "X people bought this", "Available today"
+- **Testimonials**: Real names, locations, photos when possible
+
+#### Urgency Indicators
+- **Stock**: "Only X left!" for low stock
+- **Time**: Countdown timers for limited offers
+- **Availability**: "Available today", "Limited slots"
+- **Visual**: Red/orange colors, pulsing animations
+- **Honest**: Only use when genuinely limited
+
+#### Visual Hierarchy
+- **Headings**: Clear H1 → H2 → H3 structure
+- **Size**: Important info larger, supporting info smaller
+- **Color**: Primary actions orange, secondary gray
+- **Whitespace**: Adequate spacing, not cluttered
+- **Contrast**: High contrast for important elements
+
+### Implementation Checklist
+
+When creating or updating components, ensure:
+
+- [ ] **AIDA Framework**: Attention → Interest → Desire → Action flow
+- [ ] **Trust Signals**: Visible immediately, quantified, verified
+- [ ] **Social Proof**: Ratings, reviews, statistics displayed
+- [ ] **CTAs**: Large, prominent, action-oriented, properly placed
+- [ ] **Friction Reduction**: Minimal steps, guest options, auto-fill
+- [ ] **Risk Reversal**: Guarantees, policies, trust badges visible
+- [ ] **Urgency/Scarcity**: Used appropriately, not overused
+- [ ] **Visual Hierarchy**: Clear structure, important info prominent
+- [ ] **Mobile Optimization**: Touch-friendly, responsive, fast
+- [ ] **Accessibility**: Fitts' Law compliance, proper spacing
+
+### Key Metrics to Monitor
+
+- **Conversion Rate**: Overall site → purchase conversion
+- **Cart Abandonment**: Items added but not purchased
+- **Checkout Completion**: Started vs. completed checkouts
+- **CTA Click Rates**: All call-to-action buttons
+- **Engagement**: Time on page, scroll depth, interactions
+- **Trust Signals**: Click-through on guarantees, policies
+- **Social Proof**: Review engagement, testimonial views
+- **Recovery**: Abandoned cart recovery rate
+
+### Documentation References
+
+- **Homepage Psychology**: `HOMEPAGE_PSYCHOLOGY_IMPROVEMENTS.md`
+- **Conversion Optimization**: `CONVERSION_OPTIMIZATION_GUIDE.md`
+- **Conversion Machine**: `CONVERSION_MACHINE_IMPLEMENTATION.md`
+- **Product Page Psychology**: `PRODUCT_PAGE_PSYCHOLOGY_IMPROVEMENTS.md`
+- **Conversion Research**: `CONVERSION_RESEARCH_IMPLEMENTATION.md`
+
+Always apply these psychological principles when designing, updating, or creating new components. They are research-backed and proven to increase conversions.
+

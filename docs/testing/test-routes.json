@@ -1,0 +1,1288 @@
+{
+  "apiRoutes": {
+    "authentication": [
+      {
+        "method": "POST",
+        "path": "/api/auth/signup",
+        "description": "User registration",
+        "priority": "P0",
+        "testCases": [
+          "Valid signup with email",
+          "Valid signup with phone",
+          "Duplicate email/phone handling",
+          "Invalid email format",
+          "Invalid phone format",
+          "Missing required fields",
+          "Password validation"
+        ]
+      },
+      {
+        "method": "POST",
+        "path": "/api/auth/[...nextauth]",
+        "description": "NextAuth authentication",
+        "priority": "P0",
+        "testCases": [
+          "Email/password login",
+          "Phone number login",
+          "Session management",
+          "Token refresh",
+          "Logout",
+          "Role-based access"
+        ]
+      },
+      {
+        "method": "POST",
+        "path": "/api/auth/forgot-password",
+        "description": "Password reset request",
+        "priority": "P1",
+        "testCases": [
+          "Valid email/phone",
+          "Invalid email/phone",
+          "Non-existent user",
+          "Password reset email sent",
+          "Rate limiting"
+        ]
+      },
+      {
+        "method": "POST",
+        "path": "/api/auth/reset-password",
+        "description": "Password reset",
+        "priority": "P1",
+        "testCases": [
+          "Valid token",
+          "Invalid token",
+          "Expired token",
+          "Password update",
+          "Password validation"
+        ]
+      },
+      {
+        "method": "PUT",
+        "path": "/api/auth/update-profile",
+        "description": "Update user profile",
+        "priority": "P1",
+        "testCases": [
+          "Update name",
+          "Update phone number",
+          "Update email",
+          "Unauthorized access",
+          "Invalid data validation"
+        ]
+      }
+    ],
+    "products": [
+      {
+        "method": "GET",
+        "path": "/api/products",
+        "description": "List products",
+        "priority": "P0",
+        "testCases": [
+          "List all products",
+          "Filter by category",
+          "Filter by status",
+          "Search by name",
+          "Pagination",
+          "Sorting",
+          "Price range filtering",
+          "Stock availability filtering"
+        ]
+      },
+      {
+        "method": "GET",
+        "path": "/api/products/[id]",
+        "description": "Get product by ID",
+        "priority": "P0",
+        "testCases": [
+          "Valid product ID",
+          "Invalid product ID",
+          "Product with all relations",
+          "View tracking increment",
+          "Non-existent product (404)"
+        ]
+      },
+      {
+        "method": "POST",
+        "path": "/api/products",
+        "description": "Create product (admin)",
+        "priority": "P1",
+        "testCases": [
+          "Create product (admin only)",
+          "Unauthorized access",
+          "Required fields validation",
+          "Image upload handling",
+          "Category assignment",
+          "Inventory creation",
+          "Slug generation"
+        ]
+      },
+      {
+        "method": "PUT",
+        "path": "/api/products/[id]",
+        "description": "Update product (admin)",
+        "priority": "P1",
+        "testCases": [
+          "Update product (admin only)",
+          "Partial updates",
+          "Image updates",
+          "Category updates",
+          "Price updates",
+          "Stock updates"
+        ]
+      },
+      {
+        "method": "DELETE",
+        "path": "/api/products/[id]",
+        "description": "Delete product (admin)",
+        "priority": "P1",
+        "testCases": [
+          "Delete product (admin only)",
+          "Soft delete vs hard delete",
+          "Cascade to inventory",
+          "Cascade to orders"
+        ]
+      },
+      {
+        "method": "GET",
+        "path": "/api/products/categories",
+        "description": "List product categories",
+        "priority": "P1",
+        "testCases": [
+          "List all categories",
+          "Active categories only",
+          "Category hierarchy",
+          "Category with product counts"
+        ]
+      },
+      {
+        "method": "POST",
+        "path": "/api/products/categories",
+        "description": "Create category (admin)",
+        "priority": "P2",
+        "testCases": [
+          "Create category",
+          "Duplicate name handling",
+          "Parent category assignment"
+        ]
+      },
+      {
+        "method": "GET",
+        "path": "/api/products/categories/[id]",
+        "description": "Get category",
+        "priority": "P2",
+        "testCases": [
+          "Get category details",
+          "Category with products"
+        ]
+      },
+      {
+        "method": "PUT",
+        "path": "/api/products/categories/[id]",
+        "description": "Update category (admin)",
+        "priority": "P2",
+        "testCases": [
+          "Update category",
+          "Category hierarchy updates"
+        ]
+      },
+      {
+        "method": "GET",
+        "path": "/api/products/inventory",
+        "description": "List inventory",
+        "priority": "P1",
+        "testCases": [
+          "List inventory",
+          "Filter by product",
+          "Low stock alerts",
+          "Stock history"
+        ]
+      },
+      {
+        "method": "PUT",
+        "path": "/api/products/inventory",
+        "description": "Update inventory (admin)",
+        "priority": "P1",
+        "testCases": [
+          "Update stock quantity",
+          "Inventory history tracking",
+          "Stock alerts"
+        ]
+      },
+      {
+        "method": "GET",
+        "path": "/api/products/inventory/alerts",
+        "description": "Get inventory alerts",
+        "priority": "P2",
+        "testCases": [
+          "Low stock products",
+          "Out of stock products",
+          "Alert thresholds"
+        ]
+      },
+      {
+        "method": "POST",
+        "path": "/api/products/price-alerts",
+        "description": "Create price alert",
+        "priority": "P3",
+        "testCases": [
+          "Create price alert",
+          "Duplicate alert prevention",
+          "Email notification setup"
+        ]
+      },
+      {
+        "method": "POST",
+        "path": "/api/products/stock-alerts",
+        "description": "Create stock alert",
+        "priority": "P3",
+        "testCases": [
+          "Create stock alert",
+          "Back in stock notifications"
+        ]
+      }
+    ],
+    "orders": [
+      {
+        "method": "GET",
+        "path": "/api/orders",
+        "description": "List orders",
+        "priority": "P0",
+        "testCases": [
+          "List user orders",
+          "Admin: list all orders",
+          "Filter by status",
+          "Filter by date range",
+          "Pagination",
+          "Sorting"
+        ]
+      },
+      {
+        "method": "POST",
+        "path": "/api/orders",
+        "description": "Create order",
+        "priority": "P0",
+        "testCases": [
+          "Create order",
+          "Cart validation",
+          "Inventory check",
+          "Address validation",
+          "Payment method validation",
+          "Order number generation",
+          "Inventory deduction",
+          "Email confirmation"
+        ]
+      },
+      {
+        "method": "GET",
+        "path": "/api/orders/[id]",
+        "description": "Get order details",
+        "priority": "P0",
+        "testCases": [
+          "Get order details",
+          "Order items",
+          "Shipping address",
+          "Payment details",
+          "Order history",
+          "Unauthorized access (user can only see own orders)"
+        ]
+      },
+      {
+        "method": "PUT",
+        "path": "/api/orders/[id]",
+        "description": "Update order",
+        "priority": "P1",
+        "testCases": [
+          "Update order status (admin)",
+          "Update tracking number",
+          "Status change notifications",
+          "Inventory updates on status change"
+        ]
+      },
+      {
+        "method": "GET",
+        "path": "/api/orders/[id]/invoice",
+        "description": "Generate invoice PDF",
+        "priority": "P2",
+        "testCases": [
+          "Generate invoice PDF",
+          "Invoice data accuracy",
+          "PDF formatting"
+        ]
+      }
+    ],
+    "cart": [
+      {
+        "method": "GET",
+        "path": "/api/cart/abandoned",
+        "description": "List abandoned carts",
+        "priority": "P2",
+        "testCases": [
+          "List abandoned carts",
+          "Filter by date",
+          "Cart value calculation"
+        ]
+      },
+      {
+        "method": "POST",
+        "path": "/api/cart/abandoned/recover",
+        "description": "Recover abandoned cart",
+        "priority": "P2",
+        "testCases": [
+          "Send recovery email",
+          "Email content",
+          "Rate limiting"
+        ]
+      }
+    ],
+    "wishlist": [
+      {
+        "method": "GET",
+        "path": "/api/wishlist",
+        "description": "Get user wishlist",
+        "priority": "P1",
+        "testCases": [
+          "Get user wishlist",
+          "Unauthorized access",
+          "Empty wishlist"
+        ]
+      },
+      {
+        "method": "POST",
+        "path": "/api/wishlist",
+        "description": "Add to wishlist",
+        "priority": "P1",
+        "testCases": [
+          "Add to wishlist",
+          "Duplicate prevention",
+          "Product validation"
+        ]
+      },
+      {
+        "method": "DELETE",
+        "path": "/api/wishlist/[id]",
+        "description": "Remove from wishlist",
+        "priority": "P1",
+        "testCases": [
+          "Remove from wishlist",
+          "Invalid ID handling",
+          "Unauthorized access"
+        ]
+      }
+    ],
+    "reviews": [
+      {
+        "method": "GET",
+        "path": "/api/reviews",
+        "description": "List reviews",
+        "priority": "P1",
+        "testCases": [
+          "List reviews",
+          "Filter by product",
+          "Filter by rating",
+          "Pagination",
+          "Approved reviews only"
+        ]
+      },
+      {
+        "method": "POST",
+        "path": "/api/reviews",
+        "description": "Create review",
+        "priority": "P1",
+        "testCases": [
+          "Create review",
+          "Order validation (only purchased products)",
+          "Rating validation (1-5)",
+          "Image upload",
+          "Moderation status"
+        ]
+      },
+      {
+        "method": "GET",
+        "path": "/api/reviews/[id]",
+        "description": "Get review details",
+        "priority": "P2",
+        "testCases": [
+          "Get review details",
+          "Review with images",
+          "Helpful votes count"
+        ]
+      },
+      {
+        "method": "PUT",
+        "path": "/api/reviews/[id]",
+        "description": "Update review",
+        "priority": "P2",
+        "testCases": [
+          "Update own review",
+          "Admin moderation",
+          "Status changes"
+        ]
+      },
+      {
+        "method": "DELETE",
+        "path": "/api/reviews/[id]",
+        "description": "Delete review",
+        "priority": "P2",
+        "testCases": [
+          "Delete own review",
+          "Admin delete",
+          "Cascade to helpful votes"
+        ]
+      },
+      {
+        "method": "POST",
+        "path": "/api/reviews/[id]/helpful",
+        "description": "Mark review as helpful",
+        "priority": "P3",
+        "testCases": [
+          "Mark as helpful",
+          "Duplicate vote prevention",
+          "Vote count update"
+        ]
+      },
+      {
+        "method": "DELETE",
+        "path": "/api/reviews/[id]/helpful",
+        "description": "Remove helpful vote",
+        "priority": "P3",
+        "testCases": [
+          "Remove helpful vote",
+          "Vote count update"
+        ]
+      }
+    ],
+    "addresses": [
+      {
+        "method": "GET",
+        "path": "/api/addresses",
+        "description": "List user addresses",
+        "priority": "P1",
+        "testCases": [
+          "List user addresses",
+          "Default address flag",
+          "Unauthorized access"
+        ]
+      },
+      {
+        "method": "POST",
+        "path": "/api/addresses",
+        "description": "Create address",
+        "priority": "P1",
+        "testCases": [
+          "Create address",
+          "Required fields validation",
+          "Set as default (unset others)",
+          "Address format validation"
+        ]
+      },
+      {
+        "method": "GET",
+        "path": "/api/addresses/[id]",
+        "description": "Get address details",
+        "priority": "P2",
+        "testCases": [
+          "Get address details",
+          "Unauthorized access (own addresses only)"
+        ]
+      },
+      {
+        "method": "PUT",
+        "path": "/api/addresses/[id]",
+        "description": "Update address",
+        "priority": "P1",
+        "testCases": [
+          "Update address",
+          "Set as default",
+          "Validation"
+        ]
+      },
+      {
+        "method": "DELETE",
+        "path": "/api/addresses/[id]",
+        "description": "Delete address",
+        "priority": "P2",
+        "testCases": [
+          "Delete address",
+          "Prevent delete if default",
+          "Cascade to orders"
+        ]
+      }
+    ],
+    "payments": [
+      {
+        "method": "GET",
+        "path": "/api/payments/methods",
+        "description": "List payment methods",
+        "priority": "P1",
+        "testCases": [
+          "List payment methods",
+          "Default method flag",
+          "Unauthorized access"
+        ]
+      },
+      {
+        "method": "POST",
+        "path": "/api/payments/methods",
+        "description": "Add payment method",
+        "priority": "P1",
+        "testCases": [
+          "Add payment method",
+          "Payment method validation",
+          "Set as default"
+        ]
+      },
+      {
+        "method": "GET",
+        "path": "/api/payments/methods/[id]",
+        "description": "Get payment method",
+        "priority": "P2",
+        "testCases": [
+          "Get payment method",
+          "Unauthorized access"
+        ]
+      },
+      {
+        "method": "PUT",
+        "path": "/api/payments/methods/[id]",
+        "description": "Update payment method",
+        "priority": "P2",
+        "testCases": [
+          "Update payment method",
+          "Set as default"
+        ]
+      },
+      {
+        "method": "DELETE",
+        "path": "/api/payments/methods/[id]",
+        "description": "Delete payment method",
+        "priority": "P2",
+        "testCases": [
+          "Delete payment method",
+          "Prevent delete if default"
+        ]
+      },
+      {
+        "method": "PUT",
+        "path": "/api/payments/methods/[id]/default",
+        "description": "Set default payment method",
+        "priority": "P2",
+        "testCases": [
+          "Set default payment method",
+          "Unset other defaults"
+        ]
+      },
+      {
+        "method": "POST",
+        "path": "/api/payments/create-order",
+        "description": "Create payment order",
+        "priority": "P0",
+        "testCases": [
+          "Create payment order",
+          "Amount validation",
+          "Payment gateway integration",
+          "Order creation"
+        ]
+      },
+      {
+        "method": "POST",
+        "path": "/api/payments/verify",
+        "description": "Verify payment",
+        "priority": "P0",
+        "testCases": [
+          "Verify payment",
+          "Payment status update",
+          "Order status update"
+        ]
+      },
+      {
+        "method": "POST",
+        "path": "/api/payments/webhook",
+        "description": "Payment webhook",
+        "priority": "P0",
+        "testCases": [
+          "Webhook signature validation",
+          "Payment status updates",
+          "Order fulfillment"
+        ]
+      }
+    ],
+    "coupons": [
+      {
+        "method": "GET",
+        "path": "/api/coupons",
+        "description": "List coupons",
+        "priority": "P1",
+        "testCases": [
+          "List coupons (admin)",
+          "Active coupons (public)",
+          "Filter by status",
+          "Expired coupons"
+        ]
+      },
+      {
+        "method": "POST",
+        "path": "/api/coupons",
+        "description": "Create coupon (admin)",
+        "priority": "P1",
+        "testCases": [
+          "Create coupon",
+          "Code uniqueness",
+          "Discount validation",
+          "Expiry date validation",
+          "Usage limits"
+        ]
+      },
+      {
+        "method": "GET",
+        "path": "/api/coupons/[id]",
+        "description": "Get coupon details",
+        "priority": "P2",
+        "testCases": [
+          "Get coupon details",
+          "Usage statistics"
+        ]
+      },
+      {
+        "method": "PUT",
+        "path": "/api/coupons/[id]",
+        "description": "Update coupon (admin)",
+        "priority": "P2",
+        "testCases": [
+          "Update coupon",
+          "Activate/deactivate",
+          "Usage limit updates"
+        ]
+      },
+      {
+        "method": "DELETE",
+        "path": "/api/coupons/[id]",
+        "description": "Delete coupon (admin)",
+        "priority": "P2",
+        "testCases": [
+          "Delete coupon",
+          "Soft delete"
+        ]
+      },
+      {
+        "method": "POST",
+        "path": "/api/coupons/apply",
+        "description": "Apply coupon",
+        "priority": "P1",
+        "testCases": [
+          "Apply coupon",
+          "Code validation",
+          "Expiry check",
+          "Usage limit check",
+          "Discount calculation",
+          "Minimum order value"
+        ]
+      },
+      {
+        "method": "POST",
+        "path": "/api/coupons/validate",
+        "description": "Validate coupon code",
+        "priority": "P2",
+        "testCases": [
+          "Validate coupon code",
+          "Return discount amount",
+          "Error messages"
+        ]
+      }
+    ],
+    "returns": [
+      {
+        "method": "GET",
+        "path": "/api/returns",
+        "description": "List returns",
+        "priority": "P1",
+        "testCases": [
+          "List returns",
+          "Filter by status",
+          "User's own returns",
+          "Admin: all returns"
+        ]
+      },
+      {
+        "method": "POST",
+        "path": "/api/returns",
+        "description": "Create return request",
+        "priority": "P1",
+        "testCases": [
+          "Create return request",
+          "Order validation",
+          "Return reason validation",
+          "Item validation",
+          "Return window check"
+        ]
+      },
+      {
+        "method": "GET",
+        "path": "/api/returns/[id]",
+        "description": "Get return details",
+        "priority": "P2",
+        "testCases": [
+          "Get return details",
+          "Return items",
+          "Status history"
+        ]
+      },
+      {
+        "method": "PUT",
+        "path": "/api/returns/[id]",
+        "description": "Update return status",
+        "priority": "P1",
+        "testCases": [
+          "Update return status (admin)",
+          "Approve/reject",
+          "Refund processing"
+        ]
+      },
+      {
+        "method": "DELETE",
+        "path": "/api/returns/[id]",
+        "description": "Cancel return",
+        "priority": "P2",
+        "testCases": [
+          "Cancel return",
+          "Status validation"
+        ]
+      }
+    ],
+    "refunds": [
+      {
+        "method": "GET",
+        "path": "/api/refunds",
+        "description": "List refunds",
+        "priority": "P1",
+        "testCases": [
+          "List refunds",
+          "Filter by status",
+          "User's own refunds"
+        ]
+      }
+    ],
+    "blog": [
+      {
+        "method": "GET",
+        "path": "/api/blog/posts",
+        "description": "List blog posts",
+        "priority": "P1",
+        "testCases": [
+          "List blog posts",
+          "Published posts only (public)",
+          "Filter by category",
+          "Filter by tag",
+          "Search",
+          "Pagination",
+          "Sorting"
+        ]
+      },
+      {
+        "method": "POST",
+        "path": "/api/blog/posts",
+        "description": "Create blog post (admin)",
+        "priority": "P2",
+        "testCases": [
+          "Create blog post",
+          "Slug generation",
+          "Category assignment",
+          "Tag assignment",
+          "Featured image",
+          "SEO fields"
+        ]
+      },
+      {
+        "method": "GET",
+        "path": "/api/blog/posts/[id]",
+        "description": "Get blog post",
+        "priority": "P1",
+        "testCases": [
+          "Get blog post",
+          "Published check",
+          "View count increment",
+          "Related posts"
+        ]
+      },
+      {
+        "method": "PUT",
+        "path": "/api/blog/posts/[id]",
+        "description": "Update blog post (admin)",
+        "priority": "P2",
+        "testCases": [
+          "Update blog post",
+          "Status changes",
+          "SEO updates"
+        ]
+      },
+      {
+        "method": "DELETE",
+        "path": "/api/blog/posts/[id]",
+        "description": "Delete blog post (admin)",
+        "priority": "P2",
+        "testCases": [
+          "Delete blog post",
+          "Cascade to tags"
+        ]
+      },
+      {
+        "method": "GET",
+        "path": "/api/blog/categories",
+        "description": "List blog categories",
+        "priority": "P2",
+        "testCases": [
+          "List categories",
+          "Category with post counts"
+        ]
+      },
+      {
+        "method": "POST",
+        "path": "/api/blog/categories",
+        "description": "Create blog category (admin)",
+        "priority": "P3",
+        "testCases": [
+          "Create category",
+          "Slug generation"
+        ]
+      },
+      {
+        "method": "GET",
+        "path": "/api/blog/categories/[id]",
+        "description": "Get blog category",
+        "priority": "P3",
+        "testCases": [
+          "Get category",
+          "Category with posts"
+        ]
+      },
+      {
+        "method": "PUT",
+        "path": "/api/blog/categories/[id]",
+        "description": "Update blog category (admin)",
+        "priority": "P3",
+        "testCases": [
+          "Update category"
+        ]
+      },
+      {
+        "method": "GET",
+        "path": "/api/blog/tags",
+        "description": "List blog tags",
+        "priority": "P2",
+        "testCases": [
+          "List tags",
+          "Tag with post counts"
+        ]
+      },
+      {
+        "method": "POST",
+        "path": "/api/blog/tags",
+        "description": "Create blog tag (admin)",
+        "priority": "P3",
+        "testCases": [
+          "Create tag",
+          "Slug generation"
+        ]
+      },
+      {
+        "method": "GET",
+        "path": "/api/blog/tags/[id]",
+        "description": "Get blog tag",
+        "priority": "P3",
+        "testCases": [
+          "Get tag",
+          "Tag with posts"
+        ]
+      },
+      {
+        "method": "PUT",
+        "path": "/api/blog/tags/[id]",
+        "description": "Update blog tag (admin)",
+        "priority": "P3",
+        "testCases": [
+          "Update tag"
+        ]
+      },
+      {
+        "method": "POST",
+        "path": "/api/blog/revalidate",
+        "description": "Revalidate blog post",
+        "priority": "P3",
+        "testCases": [
+          "Revalidate blog post",
+          "ISR cache invalidation"
+        ]
+      },
+      {
+        "method": "GET",
+        "path": "/api/admin/blog/analytics",
+        "description": "Blog analytics",
+        "priority": "P3",
+        "testCases": [
+          "Blog analytics",
+          "View counts",
+          "Popular posts",
+          "Category statistics"
+        ]
+      }
+    ],
+    "admin": [
+      {
+        "method": "GET",
+        "path": "/api/admin/users",
+        "description": "List users (admin)",
+        "priority": "P1",
+        "testCases": [
+          "List users (admin only)",
+          "User statistics",
+          "Loyalty points",
+          "Order history",
+          "Search and filter",
+          "Pagination"
+        ]
+      },
+      {
+        "method": "GET",
+        "path": "/api/admin/analytics",
+        "description": "Admin analytics",
+        "priority": "P1",
+        "testCases": [
+          "Revenue analytics",
+          "Order statistics",
+          "Product statistics",
+          "Date range filtering",
+          "Chart data"
+        ]
+      },
+      {
+        "method": "GET",
+        "path": "/api/admin/abandoned-carts",
+        "description": "List abandoned carts",
+        "priority": "P2",
+        "testCases": [
+          "List abandoned carts",
+          "Cart value",
+          "Recovery statistics",
+          "Filter by date"
+        ]
+      },
+      {
+        "method": "POST",
+        "path": "/api/admin/abandoned-carts/[id]/send-email",
+        "description": "Send recovery email",
+        "priority": "P2",
+        "testCases": [
+          "Send recovery email",
+          "Email content",
+          "Rate limiting"
+        ]
+      },
+      {
+        "method": "GET",
+        "path": "/api/admin/loyalty/points",
+        "description": "List loyalty points",
+        "priority": "P2",
+        "testCases": [
+          "List loyalty points",
+          "User points",
+          "Points history"
+        ]
+      },
+      {
+        "method": "POST",
+        "path": "/api/admin/loyalty/points/[userId]/adjust",
+        "description": "Adjust loyalty points",
+        "priority": "P2",
+        "testCases": [
+          "Adjust points",
+          "Add points",
+          "Deduct points",
+          "Transaction history",
+          "Tier calculation"
+        ]
+      },
+      {
+        "method": "GET",
+        "path": "/api/admin/loyalty/rewards",
+        "description": "List rewards",
+        "priority": "P2",
+        "testCases": [
+          "List rewards",
+          "Reward tiers",
+          "Reward eligibility"
+        ]
+      },
+      {
+        "method": "GET",
+        "path": "/api/admin/export/orders",
+        "description": "Export orders to Excel",
+        "priority": "P2",
+        "testCases": [
+          "Export orders to Excel",
+          "Date filtering",
+          "Status filtering",
+          "Excel formatting"
+        ]
+      },
+      {
+        "method": "GET",
+        "path": "/api/admin/export/orders/[id]/bill",
+        "description": "Generate bill PDF",
+        "priority": "P2",
+        "testCases": [
+          "Generate bill PDF",
+          "PDF formatting",
+          "Data accuracy"
+        ]
+      },
+      {
+        "method": "GET",
+        "path": "/api/admin/export/products",
+        "description": "Export products to Excel",
+        "priority": "P2",
+        "testCases": [
+          "Export products to Excel",
+          "Product data",
+          "Inventory data"
+        ]
+      },
+      {
+        "method": "POST",
+        "path": "/api/admin/products/bulk-import",
+        "description": "Import products from Excel",
+        "priority": "P2",
+        "testCases": [
+          "Import products from Excel",
+          "Data validation",
+          "Error handling",
+          "Duplicate handling"
+        ]
+      },
+      {
+        "method": "POST",
+        "path": "/api/admin/products/bulk-operations",
+        "description": "Bulk operations on products",
+        "priority": "P2",
+        "testCases": [
+          "Bulk update products",
+          "Bulk delete",
+          "Status changes"
+        ]
+      },
+      {
+        "method": "GET",
+        "path": "/api/admin/products/template",
+        "description": "Download import template",
+        "priority": "P3",
+        "testCases": [
+          "Download import template",
+          "Template format"
+        ]
+      },
+      {
+        "method": "GET",
+        "path": "/api/admin/seo/audit",
+        "description": "SEO audit",
+        "priority": "P3",
+        "testCases": [
+          "SEO audit",
+          "Missing meta tags",
+          "Image alt tags",
+          "URL structure"
+        ]
+      },
+      {
+        "method": "GET",
+        "path": "/api/admin/settings",
+        "description": "Get admin settings",
+        "priority": "P2",
+        "testCases": [
+          "Get settings",
+          "Site configuration"
+        ]
+      },
+      {
+        "method": "PUT",
+        "path": "/api/admin/settings",
+        "description": "Update admin settings",
+        "priority": "P2",
+        "testCases": [
+          "Update settings",
+          "Validation",
+          "Settings persistence"
+        ]
+      }
+    ],
+    "analytics": [
+      {
+        "method": "POST",
+        "path": "/api/analytics/track",
+        "description": "Track analytics event",
+        "priority": "P2",
+        "testCases": [
+          "Track event",
+          "Event validation",
+          "User identification",
+          "Rate limiting"
+        ]
+      },
+      {
+        "method": "POST",
+        "path": "/api/analytics/batch",
+        "description": "Batch track events",
+        "priority": "P2",
+        "testCases": [
+          "Batch track events",
+          "Event validation",
+          "Batch processing"
+        ]
+      },
+      {
+        "method": "GET",
+        "path": "/api/analytics/metrics",
+        "description": "Get analytics metrics",
+        "priority": "P2",
+        "testCases": [
+          "Get analytics metrics",
+          "Date range filtering",
+          "Event aggregation"
+        ]
+      }
+    ],
+    "images": [
+      {
+        "method": "POST",
+        "path": "/api/images/upload",
+        "description": "Upload image",
+        "priority": "P1",
+        "testCases": [
+          "Upload image",
+          "File validation",
+          "Image optimization",
+          "ImageKit integration",
+          "URL generation"
+        ]
+      },
+      {
+        "method": "GET",
+        "path": "/api/images/test",
+        "description": "Test ImageKit connection",
+        "priority": "P3",
+        "testCases": [
+          "Test ImageKit connection",
+          "ImageKit configuration"
+        ]
+      }
+    ],
+    "other": [
+      {
+        "method": "GET",
+        "path": "/api/health",
+        "description": "Health check",
+        "priority": "P1",
+        "testCases": [
+          "Health check",
+          "Database connection",
+          "Response time"
+        ]
+      },
+      {
+        "method": "GET",
+        "path": "/api/insights",
+        "description": "List insights",
+        "priority": "P2",
+        "testCases": [
+          "List insights",
+          "Published insights only",
+          "Pagination"
+        ]
+      }
+    ]
+  },
+  "pages": {
+    "public": [
+      "/",
+      "/shop",
+      "/products/[slug]",
+      "/blog",
+      "/blog/[slug]",
+      "/search",
+      "/about",
+      "/contact",
+      "/compare",
+      "/tracking",
+      "/wishlist",
+      "/privacy",
+      "/terms",
+      "/cookie",
+      "/shipping",
+      "/refund",
+      "/faq",
+      "/help",
+      "/service",
+      "/resource",
+      "/offline"
+    ],
+    "authentication": [
+      "/auth/signin",
+      "/auth/signup",
+      "/auth/forgot-password",
+      "/auth/reset-password"
+    ],
+    "userProfile": [
+      "/profile",
+      "/profile/settings",
+      "/profile/addresses",
+      "/profile/payments",
+      "/profile/orders",
+      "/profile/orders/[id]",
+      "/profile/wishlist",
+      "/profile/returns",
+      "/profile/refunds"
+    ],
+    "shoppingFlow": [
+      "/cart",
+      "/checkout",
+      "/orders/success",
+      "/orders/[id]"
+    ],
+    "admin": [
+      "/admin",
+      "/admin/products",
+      "/admin/products/categories",
+      "/admin/products/inventory",
+      "/admin/orders",
+      "/admin/orders/[id]",
+      "/admin/users",
+      "/admin/coupons",
+      "/admin/reviews",
+      "/admin/returns",
+      "/admin/returns/[id]",
+      "/admin/abandoned-carts",
+      "/admin/loyalty",
+      "/admin/blog",
+      "/admin/blog/[id]",
+      "/admin/blog/new",
+      "/admin/blog/categories",
+      "/admin/blog/tags",
+      "/admin/blog/analytics",
+      "/admin/analytics",
+      "/admin/seo",
+      "/admin/settings"
+    ]
+  },
+  "statistics": {
+    "totalApiRoutes": 69,
+    "totalPages": 63,
+    "totalTestCases": 500,
+    "priorityBreakdown": {
+      "P0": 15,
+      "P1": 35,
+      "P2": 40,
+      "P3": 10
+    }
+  }
+}
+
+
+
+
+
