@@ -153,14 +153,10 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// POST /api/orders - Create new order
+// POST /api/orders - Create new order (authenticated or guest)
 export async function POST(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
-
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
 
     const body = await request.json()
     const {
@@ -189,6 +185,23 @@ export async function POST(request: NextRequest) {
         { error: 'Shipping address is required' },
         { status: 400 }
       )
+    }
+
+    const isGuest = !session?.user
+    if (isGuest) {
+      const name =
+        shipping_address.name ?? shipping_address.full_name ?? null
+      const email = shipping_address.email ?? null
+      const phone = shipping_address.phone ?? null
+      if (!name || !email || !phone) {
+        return NextResponse.json(
+          {
+            error:
+              'Guest checkout requires name, email, and phone in shipping address',
+          },
+          { status: 400 }
+        )
+      }
     }
 
     // Validate product availability and stock
@@ -242,11 +255,16 @@ export async function POST(request: NextRequest) {
     const total_amount =
       subtotal + tax_amount + shipping_amount - discount_amount
 
-    // Create order
+    const customerName =
+      shipping_address.name ?? shipping_address.full_name ?? null
+    const customerEmail = shipping_address.email ?? null
+    const customerPhone = shipping_address.phone ?? null
+
+    // Create order (user_id null for guest checkout)
     const { data: order, error: orderError } = await supabaseAdmin
       .from('orders')
       .insert({
-        user_id: session.user.id,
+        user_id: session?.user?.id ?? null,
         shipping_address,
         billing_address: billing_address || shipping_address,
         payment_method,
@@ -258,6 +276,9 @@ export async function POST(request: NextRequest) {
         notes,
         status: 'pending',
         payment_status: payment_method === 'cod' ? 'pending' : 'pending',
+        customer_name: customerName,
+        customer_email: customerEmail,
+        customer_phone: customerPhone,
       })
       .select()
       .single()
@@ -317,10 +338,9 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Record coupon usage if coupon was applied
-    if (coupon_id && discount_amount > 0) {
+    // Record coupon usage if coupon was applied (authenticated users only)
+    if (coupon_id && discount_amount > 0 && session?.user?.id) {
       try {
-        // Record coupon usage
         const { error: usageError } = await supabaseAdmin
           .from('coupon_usage')
           .insert({
@@ -364,25 +384,24 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Reserve inventory for COD orders
-    if (payment_method === 'cod') {
-      for (const item of items) {
-        if (item.product_id) {
-          const { data: inventory } = await supabaseAdmin
-            .from('inventory')
-            .select('id, quantity, reserved_quantity')
-            .eq('product_id', item.product_id)
-            .single()
+    // Reserve inventory for all orders at creation time
+    for (const item of items) {
+      const productId = item.product_id || item.id
+      if (productId) {
+        const { data: inventory } = await supabaseAdmin
+          .from('inventory')
+          .select('id, quantity, reserved_quantity')
+          .eq('product_id', productId)
+          .single()
 
-          if (inventory) {
-            await supabaseAdmin
-              .from('inventory')
-              .update({
-                reserved_quantity:
-                  (inventory.reserved_quantity || 0) + item.quantity,
-              })
-              .eq('id', inventory.id)
-          }
+        if (inventory) {
+          await supabaseAdmin
+            .from('inventory')
+            .update({
+              reserved_quantity:
+                (inventory.reserved_quantity || 0) + item.quantity,
+            })
+            .eq('id', inventory.id)
         }
       }
     }

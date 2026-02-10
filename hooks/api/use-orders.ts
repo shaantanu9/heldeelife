@@ -92,7 +92,7 @@ export function useOrders(filters?: OrderFilters) {
     queryFn: async () => {
       const response = await apiClient.get<{ orders: Order[] }>(
         '/orders',
-        filters
+        filters as Record<string, string | number | boolean | null | undefined>
       )
       // Ensure we always return an array, never undefined
       return response?.orders || []

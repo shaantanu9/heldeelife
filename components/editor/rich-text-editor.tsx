@@ -110,7 +110,7 @@ export function RichTextEditor({
       normalizedContent !== ''
     ) {
       try {
-        editor.commands.setContent(normalizedContent, false) // false = don't add to history
+        editor.commands.setContent(normalizedContent, { emitUpdate: false })
         lastContentRef.current = normalizedContent
       } catch (error) {
         console.error('Error setting editor content:', error)

@@ -42,14 +42,12 @@ export async function GET(
       query = query.eq('slug', identifier)
     }
 
-    query = query.single()
-
     // Public users can only see active products
     if (!session?.user || session.user.role !== 'admin') {
       query = query.eq('is_active', true)
     }
 
-    const { data: product, error } = await query
+    const { data: product, error } = await query.single()
 
     if (error || !product) {
       return NextResponse.json({ error: 'Product not found' }, { status: 404 })

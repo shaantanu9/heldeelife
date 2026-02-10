@@ -6,48 +6,11 @@
 import dynamic from 'next/dynamic'
 
 // Lazy load heavy components
-export const LazyProductModal = dynamic(
-  () =>
-    import('@/components/products/product-modal').then(
-      (mod) => mod.ProductModal
-    ),
-  {
-    loading: () => <div className="animate-pulse bg-gray-200 h-64 rounded" />,
-    ssr: false,
-  }
-)
-
-export const LazyImageGallery = dynamic(
-  () =>
-    import('@/components/products/image-gallery').then(
-      (mod) => mod.ImageGallery
-    ),
-  {
-    loading: () => <div className="animate-pulse bg-gray-200 h-96 rounded" />,
-  }
-)
-
-export const LazyBlogEditor = dynamic(
-  () => import('@/components/blog/blog-editor').then((mod) => mod.BlogEditor),
-  {
-    loading: () => <div className="animate-pulse bg-gray-200 h-96 rounded" />,
-    ssr: false,
-  }
-)
-
 export const LazyAdminDashboard = dynamic(
   () =>
-    import('@/app/admin/dashboard-client').then((mod) => mod.DashboardClient),
+    import('@/app/admin/dashboard-client').then((mod) => mod.AdminDashboardClient),
   {
     loading: () => <div className="animate-pulse bg-gray-200 h-64 rounded" />,
-  }
-)
-
-export const LazyChart = dynamic(
-  () => import('@/components/charts/chart').then((mod) => mod.Chart),
-  {
-    loading: () => <div className="animate-pulse bg-gray-200 h-64 rounded" />,
-    ssr: false,
   }
 )
 
@@ -65,32 +28,3 @@ export const LazySheet = dynamic(
     ssr: false,
   }
 )
-
-// Lazy load forms
-export const LazyProductForm = dynamic(
-  () =>
-    import('@/components/admin/products/product-form').then(
-      (mod) => mod.ProductForm
-    ),
-  {
-    loading: () => <div className="animate-pulse bg-gray-200 h-96 rounded" />,
-    ssr: false,
-  }
-)
-
-export const LazyBlogForm = dynamic(
-  () => import('@/components/admin/blog/blog-form').then((mod) => mod.BlogForm),
-  {
-    loading: () => <div className="animate-pulse bg-gray-200 h-96 rounded" />,
-    ssr: false,
-  }
-)
-
-
-
-
-
-
-
-
-

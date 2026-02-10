@@ -1,7 +1,7 @@
 'use client'
 
 import Link, { LinkProps } from 'next/link'
-import { prefetchUrl } from '@/lib/utils/performance'
+import { prefetchResource } from '@/lib/utils/performance'
 import { useCallback } from 'react'
 
 interface PrefetchLinkProps extends LinkProps {
@@ -23,7 +23,7 @@ export function PrefetchLink({
 }: PrefetchLinkProps) {
   const handleMouseEnter = useCallback(() => {
     if (prefetch && typeof href === 'string') {
-      prefetchUrl(href)
+      prefetchResource(href)
     }
   }, [href, prefetch])
 

@@ -187,8 +187,8 @@ export async function POST(request: NextRequest) {
         meta_description: meta_description || finalExcerpt,
         meta_keywords: Array.isArray(meta_keywords)
           ? meta_keywords
-          : typeof meta_keywords === 'string' && meta_keywords.trim()
-            ? meta_keywords
+          : typeof meta_keywords === 'string' && (meta_keywords as string).trim()
+            ? (meta_keywords as string)
                 .split(',')
                 .map((k: string) => k.trim())
                 .filter(Boolean)

@@ -40,11 +40,10 @@ export function RelatedProductsSection({
   const handleAddToCart = (product: Product) => {
     addToCart({
       id: product.id,
+      product_id: product.id,
       name: product.name,
-      slug: product.slug,
       price: product.price,
       image: product.images?.[0] || '',
-      quantity: 1,
     })
   }
 

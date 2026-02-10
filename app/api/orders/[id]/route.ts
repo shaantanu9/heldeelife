@@ -50,14 +50,13 @@ export async function GET(
       `
       )
       .eq('id', orderId)
-      .single()
 
     // Users can only see their own orders
     if (session.user.role !== 'admin') {
       query = query.eq('user_id', session.user.id)
     }
 
-    const { data: order, error } = await query
+    const { data: order, error } = await query.single()
 
     if (error || !order) {
       return NextResponse.json({ error: 'Order not found' }, { status: 404 })

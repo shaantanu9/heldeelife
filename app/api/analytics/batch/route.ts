@@ -15,19 +15,25 @@ export async function POST(request: NextRequest) {
     // 2. Process asynchronously
     // 3. Aggregate before storing in database
 
-    // For now, process each event individually
-    // Use the request URL to determine the base URL
+    // For now, process each event individually.
+    // Use the incoming request origin so batch runs on the same host (avoids
+    // localhost calling heldeelife.com and timing out in dev).
     const baseUrl =
-      process.env.NEXT_PUBLIC_SITE_URL ||
-      `${request.nextUrl.protocol}//${request.nextUrl.host}`
+      request.nextUrl.origin ||
+      (typeof process.env.NEXT_PUBLIC_SITE_URL === 'string' &&
+        process.env.NEXT_PUBLIC_SITE_URL.trim() !== ''
+        ? process.env.NEXT_PUBLIC_SITE_URL.replace(/\/$/, '')
+        : null) ||
+      'http://localhost:3000'
 
     const results = await Promise.allSettled(
-      events.map(async (event: any) => {
+      events.map(async (event: Record<string, unknown>) => {
         try {
           const response = await fetch(`${baseUrl}/api/analytics/track`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(event),
+            signal: AbortSignal.timeout(8000),
           })
           if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`)

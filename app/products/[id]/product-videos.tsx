@@ -51,7 +51,7 @@ const mockVideos: Video[] = [
 
 export function ProductVideos({ productId, productName }: ProductVideosProps) {
   const [currentIndex, setCurrentIndex] = useState(0)
-  const [videos] = useState<Video[]>(mockVideos) // In production, fetch from API
+  const [videos] = useState<Video[]>([]) // TODO: Fetch from API when video support is added
 
   if (videos.length === 0) {
     return null

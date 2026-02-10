@@ -35,7 +35,7 @@ export async function GET(request: NextRequest) {
     // Sales Analytics
     const { data: orders, error: ordersError } = await supabaseAdmin
       .from('orders')
-      .select('total_amount, status, created_at, payment_status')
+      .select('total_amount, status, created_at, payment_status, payment_method, delivered_at, user_id')
       .gte('created_at', start.toISOString())
       .lte('created_at', end.toISOString())
 
@@ -276,7 +276,7 @@ export async function GET(request: NextRequest) {
     const avgFulfillmentTime =
       fulfillmentCount > 0 ? totalFulfillmentTime / fulfillmentCount : 0
 
-    return NextResponse.json({
+    const analyticsData = {
       analytics: {
         revenue: {
           total: totalRevenue,

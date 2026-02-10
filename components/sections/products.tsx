@@ -45,6 +45,7 @@ export function Products() {
   const handleAddToCart = (product: (typeof products)[0]) => {
     addToCart({
       id: product.id,
+      product_id: product.id,
       name: product.name,
       price: product.price,
       image: product.image,
@@ -71,7 +72,7 @@ export function Products() {
                 className="pl-2 md:pl-4 md:basis-1/2 lg:basis-1/3"
               >
                 <Card className="border border-gray-200 shadow-md hover:shadow-xl transition-all duration-300 bg-white group">
-                  <Link href={`/products/${product.slug || product.id}`}>
+                  <Link href={`/products/${(product as any).slug || product.id}`}>
                     <CardContent className="p-8">
                       <div className="aspect-square bg-orange-50 rounded-lg flex items-center justify-center mb-6 group-hover:bg-orange-100 transition-colors">
                         <span className="text-6xl opacity-70">

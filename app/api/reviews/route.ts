@@ -4,6 +4,7 @@ import { authOptions } from '@/lib/auth-options'
 import { supabaseAdmin } from '@/lib/supabase/server'
 import { createCachedResponse } from '@/lib/utils/cache-headers'
 import { REVALIDATE_TIMES } from '@/lib/constants'
+import { rateLimit, getRateLimitIdentifier } from '@/lib/rate-limit'
 
 // Route segment config - reviews cache for 10 minutes
 export const revalidate = REVALIDATE_TIMES.reviews
@@ -36,7 +37,7 @@ export async function GET(request: NextRequest) {
     const session = await getServerSession(authOptions)
     if (!session?.user || session.user.role !== 'admin') {
       query = query.eq('moderation_status', 'approved')
-    } else if (approved === 'false') {
+    } else if (!approved) {
       // Admin can filter by moderation status
       const status = searchParams.get('status') || 'pending'
       query = query.eq('moderation_status', status)
@@ -113,8 +114,22 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
+    // Rate limit: 5 reviews per 10 minutes
+    const ip = getRateLimitIdentifier(request)
+    const rateLimitResult = await rateLimit(`reviews:${session.user.id || ip}`, 5, 600)
+    if (!rateLimitResult.success) {
+      return NextResponse.json(
+        { error: 'Too many reviews. Please try again later.' },
+        { status: 429 }
+      )
+    }
+
     const body = await request.json()
-    const { product_id, order_id, rating, title, comment, review_images } = body
+    const { product_id, order_id, rating, review_images } = body
+
+    // Sanitize text fields to prevent XSS
+    const title = body.title ? body.title.replace(/<[^>]*>/g, '').trim() : null
+    const comment = body.comment ? body.comment.replace(/<[^>]*>/g, '').trim() : null
 
     if (!product_id || !rating) {
       return NextResponse.json(
@@ -182,8 +197,8 @@ export async function POST(request: NextRequest) {
         user_id: session.user.id,
         order_id: order_id || null,
         rating,
-        title: title || null,
-        comment: comment || null,
+        title,
+        comment,
         review_images:
           review_images && review_images.length > 0 ? review_images : null,
         is_verified_purchase: isVerifiedPurchase,

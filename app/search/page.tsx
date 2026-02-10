@@ -54,6 +54,7 @@ type SortOption =
 
 interface Product {
   id: string
+  product_id: string
   name: string
   slug: string
   price: number
@@ -109,7 +110,7 @@ export default function SearchPage() {
         `/api/products?search=${encodeURIComponent(query)}`
       )
       const data = await response.json()
-      setProducts(data.products || [])
+      setProducts((data.products || []).map((p: any) => ({ ...p, product_id: p.product_id || p.id })))
     } catch (error) {
       console.error('Search error:', error)
       setProducts([])
@@ -258,7 +259,7 @@ export default function SearchPage() {
                         </Label>
                         <Slider
                           value={priceRange}
-                          onValueChange={setPriceRange}
+                          onValueChange={(value) => setPriceRange(value as [number, number])}
                           max={maxPrice}
                           min={0}
                           step={100}
@@ -405,7 +406,7 @@ export default function SearchPage() {
                             )}
                           />
                         </Button>
-                        <ComparisonButton product={product} variant="icon" />
+                        <ComparisonButton product={{...product, product_id: product.id}} variant="icon" />
                       </div>
 
                       {/* Quick View Button */}

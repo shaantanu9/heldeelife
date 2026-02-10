@@ -302,7 +302,7 @@ export function AddressInput({
       // Don't set pincode when using zipCode
     } else {
       // For other fields, update normally
-      updatedData[field] = newValue as any
+      ;(updatedData as any)[field] = newValue
 
       // Preserve pincode/zipCode based on format preference
       if (usePincode) {

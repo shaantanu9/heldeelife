@@ -131,33 +131,8 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Reserve inventory for confirmed order
-    const { data: orderItems } = await supabaseAdmin
-      .from('order_items')
-      .select('product_id, quantity')
-      .eq('order_id', order_id)
-
-    if (orderItems) {
-      for (const item of orderItems) {
-        if (item.product_id) {
-          const { data: inventory } = await supabaseAdmin
-            .from('inventory')
-            .select('id, quantity, reserved_quantity')
-            .eq('product_id', item.product_id)
-            .single()
-
-          if (inventory) {
-            await supabaseAdmin
-              .from('inventory')
-              .update({
-                reserved_quantity:
-                  (inventory.reserved_quantity || 0) + item.quantity,
-              })
-              .eq('id', inventory.id)
-          }
-        }
-      }
-    }
+    // Inventory is already reserved at order creation time (in POST /api/orders)
+    // No need to reserve again here
 
     return successResponse({
       verified: true,

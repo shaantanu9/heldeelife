@@ -116,14 +116,14 @@ export async function POST(request: NextRequest) {
               row.is_active === 'true' ||
               row.is_active === 'TRUE' ||
               row.is_active === '1' ||
-              row.is_active === 1
+              Number(row.is_active) === 1
 
         const isFeatured =
           row.is_featured === true ||
           row.is_featured === 'true' ||
           row.is_featured === 'TRUE' ||
           row.is_featured === '1' ||
-          row.is_featured === 1
+          Number(row.is_featured) === 1
 
         // Parse images array
         const images = row.images

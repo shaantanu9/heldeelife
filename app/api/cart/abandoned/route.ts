@@ -2,9 +2,21 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth-options'
 import { supabaseAdmin } from '@/lib/supabase/server'
+import { rateLimit, getRateLimitIdentifier } from '@/lib/rate-limit'
+import { VALIDATION } from '@/lib/constants'
 
 export async function POST(request: NextRequest) {
   try {
+    // Rate limit: 10 requests per 5 minutes per IP
+    const ip = getRateLimitIdentifier(request)
+    const rateLimitResult = await rateLimit(`abandoned-cart:${ip}`, 10, 300)
+    if (!rateLimitResult.success) {
+      return NextResponse.json(
+        { error: 'Too many requests. Please try again later.' },
+        { status: 429 }
+      )
+    }
+
     const session = await getServerSession(authOptions)
     const body = await request.json()
     const { cart, email } = body
@@ -12,6 +24,22 @@ export async function POST(request: NextRequest) {
     if (!cart || !email) {
       return NextResponse.json(
         { error: 'Cart and email are required' },
+        { status: 400 }
+      )
+    }
+
+    // Validate email format
+    if (!VALIDATION.emailRegex.test(email)) {
+      return NextResponse.json(
+        { error: 'Invalid email format' },
+        { status: 400 }
+      )
+    }
+
+    // Validate cart structure
+    if (!cart.items || !Array.isArray(cart.items) || typeof cart.totalPrice !== 'number') {
+      return NextResponse.json(
+        { error: 'Invalid cart structure' },
         { status: 400 }
       )
     }

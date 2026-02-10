@@ -66,9 +66,7 @@ export function generateMetadata(options: SEOOptions): Metadata {
       type:
         type === 'article'
           ? 'article'
-          : type === 'product'
-            ? 'product'
-            : 'website',
+          : 'website',
       locale: 'en_US',
       url: fullUrl,
       siteName: APP_CONFIG.name,

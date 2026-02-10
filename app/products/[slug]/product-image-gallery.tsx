@@ -191,7 +191,7 @@ export function ProductImageGallery({
                 }}
               >
                 <Image
-                  src={currentImage}
+                  src={currentImage!}
                   alt={productName}
                   fill
                   className="object-contain"

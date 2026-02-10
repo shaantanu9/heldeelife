@@ -42,7 +42,7 @@ import {
   CheckSquare,
   Square,
 } from 'lucide-react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import Image from 'next/image'
 import { ImageUpload } from '@/components/ui/image-upload'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -94,6 +94,7 @@ interface FAQ {
 
 export function AdminProductsClient() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [products, setProducts] = useState<Product[]>([])
   const [categories, setCategories] = useState<Category[]>([])
   const [blogPosts, setBlogPosts] = useState<BlogPost[]>([])
@@ -162,6 +163,18 @@ export function AdminProductsClient() {
     fetchCategories()
     fetchBlogPosts()
   }, [])
+
+  // Open Add Product dialog when navigating from /admin/products/new (?new=1)
+  useEffect(() => {
+    if (searchParams.get('new') === '1') {
+      setEditingProduct(null)
+      resetForm()
+      setIsDialogOpen(true)
+      router.replace('/admin/products', { scroll: false })
+    }
+    // Intentionally only depend on searchParams; resetForm/router are stable for this one-time open
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams])
 
   const fetchCategories = async () => {
     try {

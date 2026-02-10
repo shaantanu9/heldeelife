@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
-import { Share2, Copy, Check, Facebook, Twitter, WhatsApp } from 'lucide-react'
+import { Share2, Copy, Check, Facebook, Twitter, MessageCircle } from 'lucide-react'
 import { toast } from 'sonner'
 import { BottomSheet } from './bottom-sheet'
 
@@ -98,7 +98,7 @@ export function EnhancedShare({
         >
           <div className="space-y-4 py-4">
             {/* Native Share Button */}
-            {navigator.share && (
+            {typeof navigator !== 'undefined' && 'share' in navigator && (
               <Button
                 onClick={handleNativeShare}
                 className="w-full bg-orange-600 hover:bg-orange-700 text-white"
@@ -114,9 +114,9 @@ export function EnhancedShare({
                 onClick={() => handleSocialShare('whatsapp')}
                 className="flex flex-col items-center gap-2 p-4 bg-green-50 rounded-lg hover:bg-green-100 transition-colors"
               >
-                <WhatsApp className="h-8 w-8 text-green-600" />
+                <MessageCircle className="h-8 w-8 text-green-600" />
                 <span className="text-sm font-medium text-gray-700">
-                  WhatsApp
+                  MessageCircle
                 </span>
               </button>
               <button

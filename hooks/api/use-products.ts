@@ -77,7 +77,7 @@ export function useProducts(filters?: ProductFilters) {
     queryFn: async () => {
       const response = await apiClient.get<{ products: Product[] }>(
         '/products',
-        filters
+        filters as Record<string, string | number | boolean | null | undefined>
       )
       return response.products
     },

@@ -24,7 +24,7 @@ export function useBlogPosts(filters?: BlogPostFilters) {
       const response = await apiClient.get<{
         posts: BlogPost[]
         total: number
-      }>('/blog/posts', filters)
+      }>('/blog/posts', filters as Record<string, string | number | boolean | null | undefined>)
       return response
     },
     staleTime: 1000 * 60 * 5, // 5 minutes

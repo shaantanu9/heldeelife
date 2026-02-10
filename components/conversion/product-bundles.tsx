@@ -26,6 +26,7 @@ interface BundleProduct {
   inStock: boolean
   rating?: number
   reviews_count?: number
+  sku?: string
 }
 
 interface ProductBundle {

@@ -50,14 +50,13 @@ export async function GET(
       `
       )
       .eq('id', id)
-      .single()
 
     // Users can only see their own returns
     if (session.user.role !== 'admin') {
       query = query.eq('user_id', session.user.id)
     }
 
-    const { data: returnRequest, error } = await query
+    const { data: returnRequest, error } = await query.single()
 
     if (error || !returnRequest) {
       return NextResponse.json({ error: 'Return not found' }, { status: 404 })

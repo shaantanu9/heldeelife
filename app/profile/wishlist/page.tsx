@@ -106,10 +106,10 @@ export default function WishlistPage() {
 
     addToCart({
       id: product.id,
+      product_id: product.id,
       name: product.name,
       price: product.price,
       image: product.image || '',
-      slug: product.slug,
     })
 
     toast.success('Added to cart', {

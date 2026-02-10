@@ -61,6 +61,7 @@ export function Promotions() {
     // Add sample product to cart
     addToCart({
       id: `promo-${Date.now()}`,
+      product_id: `promo-${Date.now()}`,
       name: productName,
       price: 199.0,
       image: '📦',

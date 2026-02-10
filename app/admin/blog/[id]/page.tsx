@@ -151,7 +151,7 @@ export default function EditBlogPostPage() {
   const slug = watch('slug')
   const excerpt = watch('excerpt')
   const categoryId = watch('category_id')
-  const status = watch('status')
+  const postStatus = watch('status')
   const metaTitle = watch('meta_title')
   const metaKeywords = watch('meta_keywords')
 
@@ -177,7 +177,7 @@ export default function EditBlogPostPage() {
             content,
             featured_image: featuredImage || '',
             category_id: categoryId || null,
-            status: status || 'draft',
+            status: postStatus || 'draft',
             meta_title: metaTitle || '',
             meta_description: metaDescription || '',
             meta_keywords: keywords,
@@ -195,7 +195,7 @@ export default function EditBlogPostPage() {
     }, 30000) // Auto-save every 30 seconds
 
     return () => clearInterval(autoSaveInterval)
-  }, [post, postId, title, slug, excerpt, content, featuredImage, categoryId, status, metaTitle, metaDescription, metaKeywords, selectedTags, saving, autoSaving])
+  }, [post, postId, title, slug, excerpt, content, featuredImage, categoryId, postStatus, metaTitle, metaDescription, metaKeywords, selectedTags, saving, autoSaving])
 
   async function fetchPost() {
     try {

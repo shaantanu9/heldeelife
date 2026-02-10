@@ -41,6 +41,7 @@ interface Product {
   reviews_count?: number
   sales_count?: number
   views_count?: number
+  sku?: string
 }
 
 interface Review {

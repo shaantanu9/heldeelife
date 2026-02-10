@@ -80,6 +80,7 @@ import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 
 interface Product {
   id: string
+  product_id: string
   name: string
   slug: string
   price: number
@@ -173,6 +174,7 @@ function AddToCartButton({ product }: { product: Product }) {
       await new Promise((resolve) => setTimeout(resolve, 300))
       addToCart({
         id: product.id,
+        product_id: product.id,
         name: product.name,
         price: Number(product.price),
         image: product.image || '📦',
@@ -695,7 +697,7 @@ export function ShopClient({ products, categories }: ShopClientProps) {
   }, [maxPrice])
 
   // Update price range max if needed
-  const currentPriceRange = useMemo(() => {
+  const currentPriceRange = useMemo((): [number, number] => {
     return [priceRange[0], Math.min(priceRange[1], maxPrice)]
   }, [priceRange, maxPrice])
 

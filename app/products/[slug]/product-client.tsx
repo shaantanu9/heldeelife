@@ -11,6 +11,7 @@ interface Product {
   price: number
   image: string
   inStock: boolean
+  sku?: string
 }
 
 interface ProductClientProps {

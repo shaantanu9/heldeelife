@@ -179,7 +179,7 @@ export default function CartPage() {
               </Card>
             )}
             {(isValidating ? cart : cartItemsWithAvailability).map((item) => {
-              const cartItem =
+              const cartItem: any =
                 cartItemsWithAvailability.find((ci) => ci.id === item.id) ||
                 item
               const isUnavailable = !cartItem.available || !cartItem.isActive

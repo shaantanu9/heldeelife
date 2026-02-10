@@ -1,5 +1,4 @@
 import Link from 'next/link'
-import { Facebook, Instagram, Linkedin, Youtube } from 'lucide-react'
 
 export function Footer() {
   return (
@@ -14,7 +13,7 @@ export function Footer() {
               </span>
             </Link>
             <p className="text-sm text-gray-600">
-              © 2024 heldeelife. All rights reserved.
+              © {new Date().getFullYear()} heldeelife. All rights reserved.
             </p>
           </div>
 
@@ -138,37 +137,14 @@ export function Footer() {
             </ul>
           </div>
 
-          {/* Connect With Us */}
+          {/* Connect With Us - TODO: Add social media URLs post-launch */}
           <div>
             <h3 className="font-semibold mb-4 text-gray-900">
               CONNECT WITH US
             </h3>
-            <div className="flex space-x-4">
-              <Link
-                href="#"
-                className="text-gray-600 hover:text-orange-600 transition-colors"
-              >
-                <Facebook className="h-5 w-5" />
-              </Link>
-              <Link
-                href="#"
-                className="text-gray-600 hover:text-orange-600 transition-colors"
-              >
-                <Instagram className="h-5 w-5" />
-              </Link>
-              <Link
-                href="#"
-                className="text-gray-600 hover:text-orange-600 transition-colors"
-              >
-                <Linkedin className="h-5 w-5" />
-              </Link>
-              <Link
-                href="#"
-                className="text-gray-600 hover:text-orange-600 transition-colors"
-              >
-                <Youtube className="h-5 w-5" />
-              </Link>
-            </div>
+            <p className="text-sm text-gray-600">
+              Follow us on social media for updates and wellness tips.
+            </p>
           </div>
         </div>
       </div>

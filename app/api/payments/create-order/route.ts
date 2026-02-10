@@ -47,13 +47,13 @@ export async function POST(request: NextRequest) {
     }
 
     const body: CreatePaymentOrderRequest = await request.json()
-    const { order_id, amount, currency = 'INR', receipt, notes } = body
+    const { order_id, currency = 'INR', receipt, notes } = body
 
     // Validate required fields
-    if (!order_id || !amount || amount <= 0) {
+    if (!order_id) {
       return errorResponse(
         new ApiError(400, 'Invalid payment request', 'VALIDATION_ERROR', {
-          required: ['order_id', 'amount'],
+          required: ['order_id'],
         })
       )
     }
@@ -79,9 +79,12 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Compute amount from server-side order data (ignore client-sent amount)
+    const expectedAmountPaise = Math.round(order.total_amount * 100)
+
     // Create Razorpay order
     const razorpayOrderData = {
-      amount: Math.round(amount), // Amount in paise
+      amount: expectedAmountPaise, // Amount in paise, computed server-side
       currency: currency,
       receipt: receipt || order.order_number,
       notes: {

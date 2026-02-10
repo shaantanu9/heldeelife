@@ -25,9 +25,6 @@ Sentry.init({
   // Environment
   environment: process.env.NODE_ENV || 'development',
 
-  // Capture unhandled promise rejections
-  captureUnhandledRejections: true,
-
   // Filter out development errors
   beforeSend(event, hint) {
     // Don't send errors in development

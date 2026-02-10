@@ -6,9 +6,20 @@ import {
   normalizePhoneNumber,
   isValidInput,
 } from '@/lib/auth-utils'
+import { rateLimit, getRateLimitIdentifier } from '@/lib/rate-limit'
 
 export async function POST(request: NextRequest) {
   try {
+    // Rate limit: 5 signups per 15 minutes per IP
+    const ip = getRateLimitIdentifier(request)
+    const rateLimitResult = await rateLimit(`signup:${ip}`, 5, 900)
+    if (!rateLimitResult.success) {
+      return NextResponse.json(
+        { error: 'Too many signup attempts. Please try again later.' },
+        { status: 429 }
+      )
+    }
+
     const body = await request.json()
     const { emailOrPhone, password, fullName } = body
 

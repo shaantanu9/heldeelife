@@ -19,7 +19,7 @@ export async function GET(request: NextRequest) {
       .order('display_order', { ascending: true })
       .order('name', { ascending: true })
 
-    if (active === 'true') {
+    if (active) {
       query = query.eq('is_active', true)
     }
 
@@ -54,9 +54,11 @@ export async function GET(request: NextRequest) {
 // POST /api/products/categories - Create category (admin only)
 export async function POST(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions)    if (!session?.user) {
+    const session = await getServerSession(authOptions)
+    if (!session?.user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }    if (session.user.role !== 'admin') {
+    }
+    if (session.user.role !== 'admin') {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 

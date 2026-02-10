@@ -15,6 +15,7 @@ import Link from 'next/link'
 interface Product {
   id: string
   name: string
+  slug?: string
   price: number
   image: string
   inStock: boolean
@@ -30,6 +31,7 @@ export function ProductsClient({ products }: ProductsClientProps) {
   const handleAddToCart = (product: Product) => {
     addToCart({
       id: product.id,
+      product_id: product.id,
       name: product.name,
       price: product.price,
       image: product.image,

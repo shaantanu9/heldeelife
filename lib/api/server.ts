@@ -64,8 +64,8 @@ export const getProduct = cache(async (identifier: string) => {
     query = query.eq('slug', identifier)
   }
 
-  const { data, error, connectionError } = await safeSupabaseQuery(
-    () => query.single(),
+  const { data: productData, error, connectionError } = await safeSupabaseQuery(
+    async () => query.single(),
     null
   )
 
@@ -74,23 +74,25 @@ export const getProduct = cache(async (identifier: string) => {
     return null
   }
 
-  if (error || !data) {
+  if (error || !productData) {
     if (error && !isSupabaseConnectionError(error)) {
       console.error('Error fetching product:', error)
     }
     return null
   }
 
+  const data = productData as any
+
   // Get inventory (don't fail if inventory doesn't exist)
   const { data: inventory } = await safeSupabaseQuery(
-    () =>
+    async () =>
       supabaseAdmin
         .from('inventory')
         .select('available_quantity, quantity, reserved_quantity')
         .eq('product_id', data.id)
         .maybeSingle(),
     null
-  ).then((result) => ({ data: result.data, error: result.error }))
+  ).then((result) => ({ data: result.data as any, error: result.error }))
 
   return {
     ...data,
@@ -150,7 +152,7 @@ export const getProducts = cache(
     }
 
     const { data: products, error, connectionError } = await safeSupabaseQuery(
-      () => query,
+      async () => query,
       []
     )
 
@@ -175,7 +177,7 @@ export const getProducts = cache(
     // Get inventory for all products
     const productIds = products.map((p) => p.id)
     const { data: inventory } = await safeSupabaseQuery(
-      () =>
+      async () =>
         supabaseAdmin
           .from('inventory')
           .select('product_id, available_quantity')
@@ -189,6 +191,7 @@ export const getProducts = cache(
 
     return products.map((product) => ({
       ...product,
+      product_id: product.id,
       inStock: (inventoryMap.get(product.id) || 0) > 0,
       stockQuantity: inventoryMap.get(product.id) || 0,
     }))
@@ -198,7 +201,7 @@ export const getProducts = cache(
 // Server-side product categories with caching
 export const getProductCategories = cache(async () => {
   const { data, error, connectionError } = await safeSupabaseQuery(
-    () =>
+    async () =>
       supabaseAdmin
         .from('product_categories')
         .select('*')
@@ -258,7 +261,7 @@ export const getBlogPosts = cache(
     const offset = filters?.offset || 0
 
     const { data, error, connectionError } = await safeSupabaseQuery(
-      () => query.range(offset, offset + limit - 1),
+      async () => query.range(offset, offset + limit - 1),
       []
     )
 

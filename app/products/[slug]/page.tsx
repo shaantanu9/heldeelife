@@ -426,7 +426,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
                       Key Benefits
                     </h2>
                     <ul className="space-y-2">
-                      {product.benefits.map((benefit, index) => (
+                      {product.benefits.map((benefit: string, index: number) => (
                         <li
                           key={index}
                           className="flex items-start gap-2 text-gray-600"

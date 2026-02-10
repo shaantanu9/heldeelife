@@ -238,6 +238,14 @@ export const SUCCESS_MESSAGES = {
   orderPlaced: 'Order placed successfully!',
 } as const
 
+// Business Configuration
+export const BUSINESS_CONFIG = {
+  taxRate: 0.18,
+  freeShippingThreshold: 500,
+  currency: 'INR',
+  currencySymbol: '₹',
+} as const
+
 // Feature Flags (for gradual rollouts)
 export const FEATURES = {
   wishlist: true,

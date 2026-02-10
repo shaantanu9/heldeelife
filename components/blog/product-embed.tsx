@@ -36,11 +36,10 @@ export function ProductEmbed({
     e.stopPropagation()
     addToCart({
       id: productId,
+      product_id: productId,
       name: productName,
-      slug: productSlug,
       price: productPrice,
       image: productImage || '',
-      quantity: 1,
     })
   }
 

@@ -37,6 +37,7 @@ import {
 } from '@/components/conversion/checkout-enhancements'
 import { checkFreeShipping } from '@/lib/utils/pricing'
 import { AnalyticsTracker } from '@/lib/analytics/tracking'
+import { BUSINESS_CONFIG } from '@/lib/constants'
 
 interface SavedAddress {
   id: string
@@ -403,7 +404,7 @@ export default function CheckoutPage() {
 
       // Calculate totals
       const subtotal = totalPrice
-      const tax = totalPrice * 0.18
+      const tax = totalPrice * BUSINESS_CONFIG.taxRate
       const shipping = 0 // Free shipping
       const discount = appliedCoupon?.discount_amount || 0
       const finalTotal = subtotal + tax + shipping - discount
@@ -612,7 +613,7 @@ export default function CheckoutPage() {
     }
   }
 
-  const tax = totalPrice * 0.18
+  const tax = totalPrice * BUSINESS_CONFIG.taxRate
   const discount = appliedCoupon?.discount_amount || 0
   const finalTotal = totalPrice + tax - discount
 
@@ -1280,7 +1281,7 @@ export default function CheckoutPage() {
                 {/* Free Shipping Progress */}
                 <FreeShippingProgress
                   currentTotal={totalPrice}
-                  threshold={500}
+                  threshold={BUSINESS_CONFIG.freeShippingThreshold}
                   className="mb-6"
                 />
 

@@ -28,10 +28,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (session?.user) {
       setUser({
         id: session.user.id,
-        email: session.user.email,
-        name: session.user.name,
+        email: session.user.email ?? null,
+        name: session.user.name ?? null,
         role: (session.user as any).role || 'user',
-        image: session.user.image,
+        image: session.user.image ?? null,
       })
     } else {
       setUser(null)
