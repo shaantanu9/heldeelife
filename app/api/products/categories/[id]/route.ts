@@ -6,13 +6,15 @@ import { supabaseAdmin } from '@/lib/supabase/server'
 // GET /api/products/categories/[id] - Get single category
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
+
     const { data: category, error } = await supabaseAdmin
       .from('product_categories')
       .select('*')
-      .eq('id', params.id)
+      .eq('id', id)
       .single()
 
     if (error || !category) {
@@ -32,9 +34,10 @@ export async function GET(
 // PUT /api/products/categories/[id] - Update category (admin only)
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
     const session = await getServerSession(authOptions)
 
     if (!session?.user) {
@@ -68,7 +71,7 @@ export async function PUT(
         is_active,
         updated_at: new Date().toISOString(),
       })
-      .eq('id', params.id)
+      .eq('id', id)
       .select()
       .single()
 
@@ -93,9 +96,10 @@ export async function PUT(
 // DELETE /api/products/categories/[id] - Delete category (admin only)
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
     const session = await getServerSession(authOptions)
 
     if (!session?.user) {
@@ -110,7 +114,7 @@ export async function DELETE(
     const { data: products } = await supabaseAdmin
       .from('products')
       .select('id')
-      .eq('category_id', params.id)
+      .eq('category_id', id)
       .limit(1)
 
     if (products && products.length > 0) {
@@ -123,7 +127,7 @@ export async function DELETE(
     const { error } = await supabaseAdmin
       .from('product_categories')
       .delete()
-      .eq('id', params.id)
+      .eq('id', id)
 
     if (error) {
       console.error('Error deleting category:', error)

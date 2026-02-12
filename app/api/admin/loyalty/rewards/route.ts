@@ -5,8 +5,6 @@ import { supabaseAdmin } from '@/lib/supabase/server'
 import { createCachedResponse } from '@/lib/utils/cache-headers'
 import { REVALIDATE_TIMES } from '@/lib/constants'
 
-// Route segment config - loyalty rewards cache for 30 minutes
-export const revalidate = REVALIDATE_TIMES.loyaltyRewards
 
 // GET /api/admin/loyalty/rewards - Get loyalty rewards (admin only)
 export async function GET(request: NextRequest) {

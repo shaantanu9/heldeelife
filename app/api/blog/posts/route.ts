@@ -11,7 +11,6 @@ import {
 import { sanitizeBlogContent } from '@/lib/utils/blog-content'
 
 // Route segment config for caching
-export const revalidate = 60 // Revalidate every 60 seconds
 export const dynamic = 'force-dynamic'
 
 // GET /api/blog/posts - Get all published posts (public) or all posts for authenticated users

@@ -5,8 +5,6 @@ import { supabaseAdmin } from '@/lib/supabase/server'
 import { createCachedResponse } from '@/lib/utils/cache-headers'
 import { REVALIDATE_TIMES } from '@/lib/constants'
 
-// Route segment config - return detail cache for 2 minutes
-export const revalidate = REVALIDATE_TIMES.returns
 
 // GET /api/returns/[id] - Get single return
 export async function GET(

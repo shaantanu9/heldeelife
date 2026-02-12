@@ -6,7 +6,7 @@ import { supabaseAdmin } from '@/lib/supabase/server'
 // DELETE /api/wishlist/[id] - Remove from wishlist
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions)
@@ -15,11 +15,13 @@ export async function DELETE(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
+    const { id } = await params
+
     // Verify user owns this wishlist item
     const { data: existingItem } = await supabaseAdmin
       .from('wishlist')
       .select('user_id')
-      .eq('id', params.id)
+      .eq('id', id)
       .single()
 
     if (!existingItem || existingItem.user_id !== session.user.id) {
@@ -32,7 +34,7 @@ export async function DELETE(
     const { error } = await supabaseAdmin
       .from('wishlist')
       .delete()
-      .eq('id', params.id)
+      .eq('id', id)
 
     if (error) {
       console.error('Error removing from wishlist:', error)

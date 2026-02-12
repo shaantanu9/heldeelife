@@ -4,7 +4,6 @@ import { authOptions } from '@/lib/auth-options'
 import { supabaseAdmin } from '@/lib/supabase/server'
 
 // Route segment config for caching
-export const revalidate = 60 // Revalidate every 60 seconds
 export const dynamic = 'force-dynamic'
 
 // Helper to check if string is UUID
@@ -17,11 +16,12 @@ const isUUID = (str: string): boolean => {
 // GET /api/products/[id] - Get single product by ID or slug
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions)
-    const identifier = params.id
+    const { id } = await params
+    const identifier = id
     const isId = isUUID(identifier)
 
     let query = supabaseAdmin.from('products').select(
@@ -98,7 +98,7 @@ export async function GET(
 // PUT /api/products/[id] - Update product (admin only)
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions)
@@ -111,7 +111,8 @@ export async function PUT(
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
-    const productId = params.id
+    const { id } = await params
+    const productId = id
     const body = await request.json()
 
     // Extract all fields including SEO and blog links
@@ -172,7 +173,7 @@ export async function PUT(
 // DELETE /api/products/[id] - Delete product (admin only)
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions)
@@ -185,7 +186,8 @@ export async function DELETE(
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
-    const productId = params.id
+    const { id } = await params
+    const productId = id
 
     const { error } = await supabaseAdmin
       .from('products')

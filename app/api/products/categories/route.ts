@@ -4,7 +4,6 @@ import { authOptions } from '@/lib/auth-options'
 import { supabaseAdmin } from '@/lib/supabase/server'
 
 // Route segment config for caching
-export const revalidate = 3600 // Revalidate every hour (categories don't change often)
 export const dynamic = 'force-dynamic'
 
 // GET /api/products/categories - Get all categories

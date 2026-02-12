@@ -6,7 +6,7 @@ import { supabaseAdmin } from '@/lib/supabase/server'
 // POST /api/reviews/[id]/helpful - Mark review as helpful
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions)
@@ -15,6 +15,7 @@ export async function POST(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
+    const { id } = await params
     const body = await request.json()
     const { is_helpful = true } = body
 
@@ -22,7 +23,7 @@ export async function POST(
     const { data: review } = await supabaseAdmin
       .from('product_reviews')
       .select('id')
-      .eq('id', params.id)
+      .eq('id', id)
       .single()
 
     if (!review) {
@@ -34,7 +35,7 @@ export async function POST(
       .from('review_helpful_votes')
       .upsert(
         {
-          review_id: params.id,
+          review_id: id,
           user_id: session.user.id,
           is_helpful,
         },
@@ -57,7 +58,7 @@ export async function POST(
     const { data: reviewData } = await supabaseAdmin
       .from('product_reviews')
       .select('helpful_count')
-      .eq('id', params.id)
+      .eq('id', id)
       .single()
 
     return NextResponse.json({
@@ -76,7 +77,7 @@ export async function POST(
 // DELETE /api/reviews/[id]/helpful - Remove helpful vote
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions)
@@ -85,10 +86,12 @@ export async function DELETE(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
+    const { id } = await params
+
     const { error } = await supabaseAdmin
       .from('review_helpful_votes')
       .delete()
-      .eq('review_id', params.id)
+      .eq('review_id', id)
       .eq('user_id', session.user.id)
 
     if (error) {
@@ -103,7 +106,7 @@ export async function DELETE(
     const { data: reviewData } = await supabaseAdmin
       .from('product_reviews')
       .select('helpful_count')
-      .eq('id', params.id)
+      .eq('id', id)
       .single()
 
     return NextResponse.json({
@@ -122,7 +125,7 @@ export async function DELETE(
 // GET /api/reviews/[id]/helpful - Get user's helpful vote status
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions)
@@ -131,10 +134,12 @@ export async function GET(
       return NextResponse.json({ has_voted: false })
     }
 
+    const { id } = await params
+
     const { data: vote } = await supabaseAdmin
       .from('review_helpful_votes')
       .select('is_helpful')
-      .eq('review_id', params.id)
+      .eq('review_id', id)
       .eq('user_id', session.user.id)
       .single()
 

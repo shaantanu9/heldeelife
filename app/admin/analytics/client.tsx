@@ -335,8 +335,8 @@ export function AdminAnalyticsClient() {
                 <XAxis dataKey="date" />
                 <YAxis />
                 <Tooltip
-                  formatter={(value: number) =>
-                    `₹${value.toLocaleString('en-IN')}`
+                  formatter={(value) =>
+                    `₹${Number(value).toLocaleString('en-IN')}`
                   }
                 />
                 <Legend />
@@ -364,8 +364,8 @@ export function AdminAnalyticsClient() {
                 <XAxis dataKey="date" />
                 <YAxis />
                 <Tooltip
-                  formatter={(value: number) =>
-                    `₹${value.toLocaleString('en-IN', { maximumFractionDigits: 2 })}`
+                  formatter={(value) =>
+                    `₹${Number(value).toLocaleString('en-IN', { maximumFractionDigits: 2 })}`
                   }
                 />
                 <Legend />
@@ -433,7 +433,7 @@ export function AdminAnalyticsClient() {
                   cy="50%"
                   labelLine={false}
                   label={({ name, percent }) =>
-                    `${name} ${(percent * 100).toFixed(0)}%`
+                    `${name} ${((percent ?? 0) * 100).toFixed(0)}%`
                   }
                   outerRadius={80}
                   fill="#8884d8"
@@ -466,7 +466,7 @@ export function AdminAnalyticsClient() {
                   cy="50%"
                   labelLine={false}
                   label={({ name, percent }) =>
-                    `${name} ${(percent * 100).toFixed(0)}%`
+                    `${name} ${((percent ?? 0) * 100).toFixed(0)}%`
                   }
                   outerRadius={80}
                   fill="#8884d8"
@@ -502,8 +502,8 @@ export function AdminAnalyticsClient() {
                 />
                 <YAxis />
                 <Tooltip
-                  formatter={(value: number) =>
-                    `₹${value.toLocaleString('en-IN')}`
+                  formatter={(value) =>
+                    `₹${Number(value).toLocaleString('en-IN')}`
                   }
                 />
                 <Legend />

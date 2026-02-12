@@ -5,7 +5,6 @@ import { Metadata } from 'next'
 import { Loader2 } from 'lucide-react'
 
 // Route segment config for ISR
-export const revalidate = 60 // Revalidate every 60 seconds
 export const dynamic = 'force-dynamic'
 
 export const metadata: Metadata = {

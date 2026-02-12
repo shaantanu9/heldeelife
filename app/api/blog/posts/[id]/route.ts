@@ -13,11 +13,11 @@ import { sanitizeBlogContent } from '@/lib/utils/blog-content'
 // GET /api/blog/posts/[id] - Get a single blog post
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions)
-    const { id } = params
+    const { id } = await params
 
     let query = supabaseAdmin
       .from('blog_posts')
@@ -74,7 +74,7 @@ export async function GET(
 // PUT /api/blog/posts/[id] - Update a blog post
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions)
@@ -90,7 +90,7 @@ export async function PUT(
       )
     }
 
-    const { id } = params
+    const { id } = await params
     const body: Partial<UpdateBlogPostInput> = await request.json()
 
     // Check if user owns the post
@@ -230,7 +230,7 @@ export async function PUT(
 // DELETE /api/blog/posts/[id] - Delete a blog post
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions)
@@ -246,7 +246,7 @@ export async function DELETE(
       )
     }
 
-    const { id } = params
+    const { id } = await params
 
     // Check if post exists
     const { data: existingPost, error: checkError } = await supabaseAdmin

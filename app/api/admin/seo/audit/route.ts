@@ -3,7 +3,6 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth-options'
 import { supabaseAdmin } from '@/lib/supabase/server'
 
-export const revalidate = 300 // Cache for 5 minutes
 
 export async function GET(request: NextRequest) {
   try {

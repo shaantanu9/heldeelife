@@ -39,6 +39,8 @@ const nextConfig = {
     dangerouslyAllowSVG: true,
     contentSecurityPolicy: "default-src 'self'; script-src 'none'; sandbox;",
   },
+  // Server external packages (moved from experimental in Next.js 16)
+  serverExternalPackages: ['pg', '@supabase/supabase-js'],
   // Optimize for static generation
   experimental: {
     optimizePackageImports: [
@@ -54,25 +56,19 @@ const nextConfig = {
     ],
     // Enable partial prerendering
     ppr: false, // Set to true when stable
-    // Optimize server components
-    serverComponentsExternalPackages: ['pg', '@supabase/supabase-js'],
   },
+  // Turbopack config (default bundler in Next.js 16)
+  turbopack: {},
   // Compress responses
   compress: true,
-  // Optimize production builds
-  swcMinify: true,
   // Enable React strict mode
   reactStrictMode: true,
-  // Optimize fonts
-  optimizeFonts: true,
   // Power optimization
   poweredByHeader: false,
   // Output configuration
   output: 'standalone',
   // Production source maps (disable for better performance)
   productionBrowserSourceMaps: false,
-  // Optimize CSS
-  optimizeCss: true,
   // Headers for caching and security
   async headers() {
     return [

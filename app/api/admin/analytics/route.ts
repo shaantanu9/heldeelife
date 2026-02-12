@@ -5,8 +5,6 @@ import { supabaseAdmin } from '@/lib/supabase/server'
 import { createCachedResponse } from '@/lib/utils/cache-headers'
 import { REVALIDATE_TIMES } from '@/lib/constants'
 
-// Route segment config - analytics cache for 5 minutes
-export const revalidate = REVALIDATE_TIMES.analytics
 
 // GET /api/admin/analytics - Get analytics data (admin only)
 export async function GET(request: NextRequest) {

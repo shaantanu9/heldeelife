@@ -25,7 +25,7 @@ export async function POST(request: NextRequest) {
       // Revalidate specific blog post
       revalidatePath(`/blog/${slug}`)
       revalidatePath('/blog')
-      revalidateTag(`blog-${slug}`)
+      revalidateTag(`blog-${slug}`, 'page')
     } else if (path) {
       // Revalidate specific path
       revalidatePath(path)

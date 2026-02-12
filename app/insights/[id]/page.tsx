@@ -5,7 +5,6 @@ import { InsightClient } from './insight-client'
 import { getRelatedBlogPosts } from '@/lib/utils/blog-query'
 
 export const dynamic = 'force-dynamic'
-export const revalidate = 60
 
 interface InsightPageProps {
   params: Promise<{ id: string }>

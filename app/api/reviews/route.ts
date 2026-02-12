@@ -6,8 +6,6 @@ import { createCachedResponse } from '@/lib/utils/cache-headers'
 import { REVALIDATE_TIMES } from '@/lib/constants'
 import { rateLimit, getRateLimitIdentifier } from '@/lib/rate-limit'
 
-// Route segment config - reviews cache for 10 minutes
-export const revalidate = REVALIDATE_TIMES.reviews
 
 // GET /api/reviews - Get reviews
 export async function GET(request: NextRequest) {

@@ -8,7 +8,6 @@ import {
   createSupabaseErrorResponse,
 } from '@/lib/utils/supabase-error-handler'
 
-export const revalidate = 300 // Revalidate every 5 minutes
 
 // GET /api/products - List products with caching
 export async function GET(request: NextRequest) {

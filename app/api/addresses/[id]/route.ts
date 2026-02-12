@@ -6,7 +6,7 @@ import { supabaseAdmin } from '@/lib/supabase/server'
 // GET /api/addresses/[id] - Get single address
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions)
@@ -15,10 +15,12 @@ export async function GET(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
+    const { id } = await context.params
+
     const { data: address, error } = await supabaseAdmin
       .from('user_addresses')
       .select('*')
-      .eq('id', params.id)
+      .eq('id', id)
       .eq('user_id', session.user.id)
       .single()
 
@@ -47,7 +49,7 @@ export async function GET(
 // PUT /api/addresses/[id] - Update address
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions)
@@ -56,6 +58,7 @@ export async function PUT(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
+    const { id } = await context.params
     const body = await request.json()
     const {
       type,
@@ -103,7 +106,7 @@ export async function PUT(
         .from('user_addresses')
         .update({ is_default: false })
         .eq('user_id', session.user.id)
-        .neq('id', params.id)
+        .neq('id', id)
     }
 
     const { data: address, error } = await supabaseAdmin
@@ -130,7 +133,7 @@ export async function PUT(
         longitude,
         updated_at: new Date().toISOString(),
       })
-      .eq('id', params.id)
+      .eq('id', id)
       .eq('user_id', session.user.id)
       .select()
       .single()
@@ -160,7 +163,7 @@ export async function PUT(
 // DELETE /api/addresses/[id] - Delete address
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions)
@@ -169,10 +172,12 @@ export async function DELETE(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
+    const { id } = await context.params
+
     const { error } = await supabaseAdmin
       .from('user_addresses')
       .delete()
-      .eq('id', params.id)
+      .eq('id', id)
       .eq('user_id', session.user.id)
 
     if (error) {
@@ -196,7 +201,7 @@ export async function DELETE(
 // PATCH /api/addresses/[id] - Set as default address
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions)
@@ -205,6 +210,7 @@ export async function PATCH(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
+    const { id } = await context.params
     const body = await request.json()
     const { is_default } = body
 
@@ -214,7 +220,7 @@ export async function PATCH(
         .from('user_addresses')
         .update({ is_default: false })
         .eq('user_id', session.user.id)
-        .neq('id', params.id)
+        .neq('id', id)
     }
 
     const { data: address, error } = await supabaseAdmin
@@ -223,7 +229,7 @@ export async function PATCH(
         is_default: is_default || false,
         updated_at: new Date().toISOString(),
       })
-      .eq('id', params.id)
+      .eq('id', id)
       .eq('user_id', session.user.id)
       .select()
       .single()

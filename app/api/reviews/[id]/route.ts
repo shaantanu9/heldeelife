@@ -6,7 +6,7 @@ import { supabaseAdmin } from '@/lib/supabase/server'
 // PUT /api/reviews/[id] - Update review
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions)
@@ -15,6 +15,7 @@ export async function PUT(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
+    const { id } = await params
     const body = await request.json()
     const {
       rating,
@@ -30,7 +31,7 @@ export async function PUT(
     const { data: existingReview } = await supabaseAdmin
       .from('product_reviews')
       .select('user_id')
-      .eq('id', params.id)
+      .eq('id', id)
       .single()
 
     if (!existingReview) {
@@ -89,7 +90,7 @@ export async function PUT(
         ...updateData,
         updated_at: new Date().toISOString(),
       })
-      .eq('id', params.id)
+      .eq('id', id)
       .select()
       .single()
 
@@ -114,7 +115,7 @@ export async function PUT(
 // DELETE /api/reviews/[id] - Delete review
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions)
@@ -123,11 +124,13 @@ export async function DELETE(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
+    const { id } = await params
+
     // Check if user owns this review or is admin
     const { data: existingReview } = await supabaseAdmin
       .from('product_reviews')
       .select('user_id')
-      .eq('id', params.id)
+      .eq('id', id)
       .single()
 
     if (!existingReview) {
@@ -144,7 +147,7 @@ export async function DELETE(
     const { error } = await supabaseAdmin
       .from('product_reviews')
       .delete()
-      .eq('id', params.id)
+      .eq('id', id)
 
     if (error) {
       console.error('Error deleting review:', error)
