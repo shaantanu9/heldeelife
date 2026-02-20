@@ -6,9 +6,15 @@ import { supabaseAdmin } from '@/lib/supabase/server'
 export async function GET(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
-
-    // Allow both authenticated users and admins
-    // Admins get all metrics, users get their own metrics
+    if (!session?.user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+    if (session.user.role !== 'admin') {
+      return NextResponse.json(
+        { error: 'Forbidden: Admin access required' },
+        { status: 403 }
+      )
+    }
 
     const { searchParams } = new URL(request.url)
     const startDate = searchParams.get('start_date')
