@@ -164,7 +164,23 @@ Each critical TODO is either implemented or documented as deferred with reason. 
 
 ---
 
-## 8. File and Reference Summary
+## 8. P1 Test Coverage (S-5)
+
+At least one test per P1 area exists or the gap is documented. Updated 2025-02-20.
+
+| P1 area | Coverage | Location / note |
+|---------|----------|------------------|
+| **Product CRUD** | Yes | `tests/api/products/route.test.ts` — GET returns 200 with products array and count. |
+| **Cart** | Yes | `tests/api/cart/abandoned/route.test.ts` — POST 400 when cart/email missing; 200 with valid body. |
+| **Checkout flow** | Yes | Covered by order creation: `tests/api/orders/route.test.ts` (POST /api/orders). Checkout page calls same API via OrderContext. |
+| **Order management** | Yes | `tests/api/orders/route.test.ts` — GET (auth, filters, pagination), POST (create, validation, guest/auth). One test fails (401 vs guest checkout); see §6. |
+| **User profile** | Yes | `tests/api/addresses/route.test.ts` — GET 401 when unauthenticated; 200 with addresses array when authenticated. Profile page and other profile APIs (payments, settings) share same auth pattern; addresses chosen as representative. |
+
+Additional P1-related tests: `tests/api/analytics/metrics/route.test.ts`, `tests/api/blog/revalidate/route.test.ts` (admin/auth).
+
+---
+
+## 9. File and Reference Summary
 
 | Item                    | Location / command |
 |-------------------------|--------------------|
