@@ -71,11 +71,7 @@ Summarized from `memory-bank/progress.md`, `memory-bank/activeContext.md`, and p
 - Product images are placeholders (e.g. emojis); real assets and product–DB connection needed.
 - Order creation API exists and is used by checkout (guest + auth supported); order history and admin order management need verification and coverage.
 
-### TODOs in code
-
-- Stock notification API (product-stock-notification flow).
-- Abandoned cart send-email stub (send-email route).
-- Product videos placeholder (videos from API).
+### TODOs in code (status in §7)
 
 ### MVP / feature gaps (from memory-bank)
 
@@ -125,7 +121,7 @@ Coverage goals from the doc: unit 80%+, integration 70%+, E2E for critical flows
 
 ### Follow-up
 
-7. Document or implement critical TODOs (stock notifications, abandoned-cart email, product videos).
+7. ~~Document or implement critical TODOs~~ — Done in S-4 (see §8).
 8. Align memory-bank (e.g. progress.md, activeContext.md) with current state after fixes (e.g. order creation API and checkout usage).
 
 ---
@@ -156,7 +152,19 @@ Checklist executed via code trace and existing API tests. Results as of 2025-02-
 
 ---
 
-## 7. File and Reference Summary
+## 7. Critical TODOs Status (S-4)
+
+Each critical TODO is either implemented or documented as deferred with reason. Updated 2025-02-20.
+
+| TODO | Status | Detail |
+|------|--------|--------|
+| **Stock notification API** | **Implemented** | Product detail component `product-stock-notification.tsx` now calls existing `POST /api/products/stock-alerts` with `productId`, `productName`, `email`, `phone`. API persists to `cart_analytics` (stock_alert type). No new API added; UI was wired to existing endpoint. |
+| **Abandoned cart send-email** | **Deferred** | Route `POST /api/admin/abandoned-carts/[id]/send-email` exists, is admin-only, increments `recovery_attempts`, and returns success. Actual email sending deferred: no email provider (SendGrid/Resend) integrated yet. Comment in code and this report record the deferral. |
+| **Product videos placeholder** | **Deferred** | `ProductVideos` component exists but renders nothing until videos are provided. No `product_videos` table or API yet. Deferred until backend schema and API are added; comment in code and this report record the deferral. |
+
+---
+
+## 8. File and Reference Summary
 
 | Item                    | Location / command |
 |-------------------------|--------------------|
