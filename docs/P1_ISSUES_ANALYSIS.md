@@ -130,7 +130,33 @@ Coverage goals from the doc: unit 80%+, integration 70%+, E2E for critical flows
 
 ---
 
-## 6. File and Reference Summary
+## 6. P1 User Flow Verification (S-3)
+
+Checklist executed via code trace and existing API tests. Results as of 2025-02-20.
+
+### Checklist and results
+
+| # | P1 flow | Status | Notes |
+|---|--------|--------|--------|
+| 1 | **Shop → product detail** | **Pass** | Shop page (`app/shop/page.tsx`) uses `getProducts()` / `getProductCategories()` from `lib/api/server`; `ShopClient` links to `/products/${product.slug}`. Product detail page `app/products/[slug]/page.tsx` uses `getProduct(slug)` and renders `ProductEnhanced`. Data from Supabase products table. |
+| 2 | **Cart add** | **Pass** | `ShopClient` and product detail use `useCart()` from `contexts/cart-context`; `addToCart()` used from shop grid and product page. Cart persists (e.g. localStorage). |
+| 3 | **Checkout → order creation** | **Pass** | Checkout page (`app/checkout/page.tsx`) uses `useOrderContext().createOrder()`. Context uses `useCreateOrder()` which calls `apiClient.post('/orders', data)` → `POST /api/orders`. API supports authenticated and guest checkout; creates order and order_items in DB. |
+| 4 | **Order history** | **Pass** | `app/profile/orders/page.tsx` fetches `GET /api/orders` when user is signed in; `app/orders/success/page.tsx` and `app/profile/orders/[id]/page.tsx` use `GET /api/orders/[id]`. APIs enforce session and user-scoped or admin access. |
+| 5 | **Profile flows** | **Pass** | Profile dashboard (`app/profile/page.tsx`), orders, addresses, payments, settings, wishlist pages exist and call corresponding APIs (`/api/orders`, `/api/addresses`, `/api/payments/methods`, etc.). Auth required via middleware/session. |
+
+### Tests run
+
+- **Orders API** (`tests/api/orders/route.test.ts`): 32 passed, 1 failed.
+  - **Failure:** “POST /api/orders > Authentication > should return 401 if user is not authenticated” — test expects 401 when there is no session; implementation allows **guest checkout** and returns 400 when required guest fields (name, email, phone in shipping_address) are missing. So the flow is “guest or authenticated”; the failing test is inconsistent with current API contract.
+
+### Failures and gaps
+
+- **Documented failure:** One order test expects 401 for unauthenticated POST to `/api/orders`. API is designed to allow guest checkout; either update the test to reflect guest behavior or change the API to require auth and return 401 when not logged in.
+- **E2E:** No automated E2E was run (no browser/Playwright in this run). Flow verification is by code trace and API unit tests only.
+
+---
+
+## 7. File and Reference Summary
 
 | Item                    | Location / command |
 |-------------------------|--------------------|
