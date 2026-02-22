@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "PORT=4567 next dev",
+    "dev": "PORT=${PORT:-4567} npx next dev",
     "clean:dev": "rm -rf .next",
     "clean:web": "rm -rf .next && rm -rf node_modules && npm install",
     "build": "next build",

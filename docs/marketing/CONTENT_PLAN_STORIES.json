@@ -1,0 +1,182 @@
+[
+  {
+    "story_id": "C-1",
+    "title": "What Is Authentic Ayurveda?",
+    "description": "Blog post. Channel: Content/SEO. Key message: Rooted in tradition, backed by quality. Target: Ayurveda seekers, health-conscious. CTA: Explore ingredients, Read our blog.",
+    "acceptance_criteria": ["SEO-optimised title and meta", "Internal links to categories/products", "Single primary CTA at end", "Trust line in footer"]
+  },
+  {
+    "story_id": "C-2",
+    "title": "Natural Wellness You Can Trust",
+    "description": "Blog post. Channel: Content/SEO. Key message: Natural wellness you can trust. Target: Health-conscious mainstream. CTA: Shop by concern, Start with bestsellers.",
+    "acceptance_criteria": ["Clear benefits and safety messaging", "Links to bestsellers and shop by concern", "Scannable headings and bullets", "Trust line included"]
+  },
+  {
+    "story_id": "C-3",
+    "title": "Ingredients and Origins We Stand By",
+    "description": "Blog post. Channel: Content/SEO. Key message: Rooted in tradition, backed by quality. Target: Ayurveda seekers. CTA: Explore ingredients, Consult our guides.",
+    "acceptance_criteria": ["Transparency on ingredients and origins", "Dosage/usage where relevant", "Links to product and guide pages", "CTA: Explore ingredients"]
+  },
+  {
+    "story_id": "C-4",
+    "title": "Clean Beauty That Works",
+    "description": "Blog/Insights piece. Channel: Content/SEO. Key message: Clean beauty that works. Target: Clean beauty / Millennial–Gen Z. CTA: Shop personal care, See reviews.",
+    "acceptance_criteria": ["Natural ingredients and sustainability", "Review/social proof mention", "Links to personal care and reviews", "Mobile-friendly layout"]
+  },
+  {
+    "story_id": "C-5",
+    "title": "Support Your Body the Natural Way",
+    "description": "Blog post. Channel: Content/SEO. Key message: Support your body the natural way. Target: Chronic/preventive. CTA: Set a reminder, Subscribe & save.",
+    "acceptance_criteria": ["Preventive and efficacy messaging", "Replenishment/subscription CTA", "Links to relevant products", "Trust and GMP mentioned"]
+  },
+  {
+    "story_id": "C-6",
+    "title": "Authentic Ayurveda, Delivered to You",
+    "description": "Blog post. Channel: Content/SEO. Key message: Authentic Ayurveda, delivered. Target: International (NA/EU). CTA: International shipping, Certifications, Guarantees.",
+    "acceptance_criteria": ["Shipping and certification clarity", "Trust badges and guarantees", "Clear CTAs for international", "No region-only assumptions"]
+  },
+  {
+    "story_id": "C-7",
+    "title": "How to Choose the Right Ayurvedic Product for You",
+    "description": "Blog post (how-to). Channel: Content/SEO. Key message: Education and discovery. Target: All segments. CTA: Shop by concern, Learn more.",
+    "acceptance_criteria": ["Step-by-step or scannable guide", "SEO keywords for discovery", "Links to categories/products", "Single primary CTA"]
+  },
+  {
+    "story_id": "C-8",
+    "title": "Condition-Focused Article (e.g. Digestion / Skin / Stress)",
+    "description": "Blog post. Channel: Content/SEO. Key message: Segment and condition. Target: Segment-specific. CTA: Shop this category, Read our blog.",
+    "acceptance_criteria": ["Condition keyword targeted", "Category and product links", "Trust and evidence mentioned", "CTA to shop category"]
+  },
+  {
+    "story_id": "C-9",
+    "title": "Seasonal / Festival Blog (Phase 2)",
+    "description": "Blog post. Channel: Content/SEO. Align with seasonal demand. Target: Health-conscious, Ayurveda seekers. CTA: Shop now, Subscribe for offers.",
+    "acceptance_criteria": ["Calendar-aligned publish", "Seasonal keywords", "Product/category links", "Trust line"]
+  },
+  {
+    "story_id": "C-10",
+    "title": "Deep-Dive Ingredient or Formulation",
+    "description": "Blog/Insights. Channel: Content/SEO. Key message: Quality and transparency. Target: Ayurveda seekers. CTA: Explore ingredients, Read our blog.",
+    "acceptance_criteria": ["Accurate, cited content", "Links to products using ingredient", "Scannable format", "CTA at end"]
+  },
+  {
+    "story_id": "C-11",
+    "title": "Customer Story or Testimonial Feature",
+    "description": "Blog or Insights. Channel: Content/SEO + Social. Key message: Social proof. Target: Health-conscious, clean beauty. CTA: See reviews, Shop now.",
+    "acceptance_criteria": ["Real quote or story", "Permission for use", "Link to product/reviews", "Shareable for social"]
+  },
+  {
+    "story_id": "C-12",
+    "title": "Replenishment and Subscription Benefits",
+    "description": "Blog/Insights. Channel: Content/SEO. Key message: Subscribe & save, support your body. Target: Chronic/preventive. CTA: Set a reminder, Subscribe & save.",
+    "acceptance_criteria": ["Benefits of subscription clear", "Link to subscribe/set reminder", "Trust and guarantee", "One primary CTA"]
+  },
+  {
+    "story_id": "C-13",
+    "title": "Seasonal / New Year Wellness (Phase 3)",
+    "description": "Blog post. Channel: Content/SEO. Key message: Natural wellness, fresh start. Target: Health-conscious, Ayurveda seekers. CTA: Shop by concern, Subscribe.",
+    "acceptance_criteria": ["Publish in Phase 3 calendar", "Seasonal SEO", "Product links", "Trust line"]
+  },
+  {
+    "story_id": "C-14",
+    "title": "International Deep-Dive (Shipping, Certifications)",
+    "description": "Blog or landing support. Channel: Content/SEO. Key message: Authentic Ayurveda, delivered. Target: International. CTA: International shipping, Guarantees.",
+    "acceptance_criteria": ["Shipping and certification details", "Trust badges", "Clear CTA", "No India-only assumptions"]
+  },
+  {
+    "story_id": "C-15",
+    "title": "Brand Story (Meta / Instagram)",
+    "description": "Social post. Channel: Social (Meta, Instagram). Key message: Authentic Ayurveda, modern care. Target: All. CTA: Follow, Visit site.",
+    "acceptance_criteria": ["Visual + short copy", "Brand narrative clear", "Link to site", "Platform-native format"]
+  },
+  {
+    "story_id": "C-16",
+    "title": "Trust Badges Creative (GMP, 100% Authentic, Returns)",
+    "description": "Social asset. Channel: Social. Key message: Trust and risk-reversal. Target: All. CTA: Shop with confidence.",
+    "acceptance_criteria": ["Visual with 1–3 badges", "Minimal text overlay", "CTA in caption", "Reusable across Meta/IG"]
+  },
+  {
+    "story_id": "C-17",
+    "title": "UGC / Testimonial Social Post",
+    "description": "Social post. Channel: Social. Key message: Social proof. Target: Clean beauty, health-conscious. CTA: See reviews, Shop now.",
+    "acceptance_criteria": ["Customer quote or review", "Permission secured", "Product/site link", "Engagement-friendly caption"]
+  },
+  {
+    "story_id": "C-18",
+    "title": "Reel / Short-Form Video (Tip or Product in Use)",
+    "description": "Social video. Channel: Social (Instagram, Meta, YouTube shorts). Key message: Product benefit or tip. Target: Mobile-heavy segments. CTA: Link in bio, Save for later.",
+    "acceptance_criteria": ["Under 60s where applicable", "Clear hook", "CTA in caption or end card", "Mobile-first"]
+  },
+  {
+    "story_id": "C-19",
+    "title": "Welcome Email Series (2–3 emails)",
+    "description": "Email sequence. Channel: Email. Key message: Brand intro, bestsellers, trust. Target: New signups. CTA: Shop by concern, Subscribe for offers.",
+    "acceptance_criteria": ["2–3 emails defined", "Mobile-friendly", "One primary CTA per email", "Trust line in footer"]
+  },
+  {
+    "story_id": "C-20",
+    "title": "Abandoned-Cart Email Sequence (2–3 emails)",
+    "description": "Email sequence. Channel: Email. Key message: Reminder, benefit recap, incentive. Target: Abandoners. CTA: Complete your order.",
+    "acceptance_criteria": ["2–3 emails with timing", "Optional incentive (e.g. 10% or free shipping)", "Clear CTA to cart/checkout", "Measurable recovery rate"]
+  },
+  {
+    "story_id": "C-21",
+    "title": "Post-Purchase Email",
+    "description": "Transactional/lifecycle email. Channel: Email. Key message: Thank you, usage tip, cross-sell. Target: New buyers. CTA: Explore more, Set replenishment.",
+    "acceptance_criteria": ["Thank-you and order summary", "One usage tip or cross-sell", "Single primary CTA", "Trust line"]
+  },
+  {
+    "story_id": "C-22",
+    "title": "Newsletter (Ongoing)",
+    "description": "Email. Channel: Email. Key message: Tips, new products, offers. Target: Subscribers. CTA: Shop now, Read blog.",
+    "acceptance_criteria": ["Aligned with content calendar", "One primary CTA", "Unsubscribe and preference link", "Open/click tracked"]
+  },
+  {
+    "story_id": "C-23",
+    "title": "Replenishment Email",
+    "description": "Lifecycle email. Channel: Email. Key message: Time to reorder? Target: Past purchasers. CTA: Subscribe & save, Order now.",
+    "acceptance_criteria": ["Trigger/timing defined", "Product or category relevance", "Subscribe & save CTA", "Trust line"]
+  },
+  {
+    "story_id": "C-24",
+    "title": "Homepage Trust Block",
+    "description": "Landing/page section. Channel: Web. Key message: 100% Authentic | GMP | Easy returns | Secure checkout | Free shipping. Target: All. CTA: Shop now.",
+    "acceptance_criteria": ["Trust line + badges above fold or early", "Single primary CTA", "Mobile-optimised", "Consistent with style guide"]
+  },
+  {
+    "story_id": "C-25",
+    "title": "Shop by Concern Landing",
+    "description": "Landing/category entry. Channel: Web/SEO. Key message: Easy discovery. Target: Health-conscious. CTA: Shop [concern].",
+    "acceptance_criteria": ["Concern-based navigation or grid", "Links to category/product", "Trust badges", "One primary CTA"]
+  },
+  {
+    "story_id": "C-26",
+    "title": "Paid Search / Social Ad Creative Set",
+    "description": "Paid ads. Channel: Google, Meta. Key message: Segment-specific (see strategy). Target: By segment. CTA: By segment (Shop, Learn, Subscribe).",
+    "acceptance_criteria": ["Headline, body, CTA per segment", "CPA/ROAS measurable", "Compliance with platform policies", "Landing page aligned"]
+  },
+  {
+    "story_id": "C-27",
+    "title": "PR / Influencer Partnership Kit",
+    "description": "PR/partnerships. Channel: PR. Key message: Authentic Ayurveda, expert credibility. Target: Practitioners, wellness creators. CTA: Feature HeldeeLife, Link to site.",
+    "acceptance_criteria": ["Key messages doc", "Visuals and expert quotes", "3–5 partnerships or features", "Link to site in all"]
+  },
+  {
+    "story_id": "C-28",
+    "title": "First-Order Offer Landing",
+    "description": "Landing page. Channel: Web, paid. Key message: Offer + trust. Target: New visitors. CTA: Claim offer, Shop now.",
+    "acceptance_criteria": ["Offer clear and trackable", "Trust line and badges", "Single primary CTA", "Mobile-first"]
+  },
+  {
+    "story_id": "C-29",
+    "title": "Loyalty / Earn Points Messaging (Header and Checkout)",
+    "description": "In-page and email. Channel: Web, Email. Key message: Earn points, redeem. Target: Purchasers. CTA: Earn points, Redeem.",
+    "acceptance_criteria": ["Visible in header/checkout", "Copy for earn/redeem", "Link to loyalty or account", "Consistent with campaign"]
+  },
+  {
+    "story_id": "C-30",
+    "title": "International Landing Page",
+    "description": "Landing page. Channel: Web. Key message: Authentic Ayurveda, delivered. Target: International. CTA: International shipping, Shop now.",
+    "acceptance_criteria": ["Shipping and certification info", "Trust and guarantees", "Single primary CTA", "Currency/shipping clarity"]
+  }
+]

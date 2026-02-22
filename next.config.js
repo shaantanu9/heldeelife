@@ -1,3 +1,4 @@
+const path = require('path')
 const withPWA = require('next-pwa')({
   dest: 'public',
   register: true,
@@ -58,7 +59,9 @@ const nextConfig = {
     ppr: false, // Set to true when stable
   },
   // Turbopack config (default bundler in Next.js 16)
-  turbopack: {},
+  turbopack: {
+    root: path.resolve(__dirname),
+  },
   // Compress responses
   compress: true,
   // Enable React strict mode

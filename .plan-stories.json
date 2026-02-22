@@ -1,0 +1,23 @@
+[
+  {
+    "story_id": "S-1",
+    "title": "Update root layout site title and SEO metadata",
+    "description": "In app/layout.tsx set metadata title.default, openGraph.title, openGraph.images[0].alt, and twitter.title to 'Your Journey to Holistic Wellness Starts Here'. Keep title.template as '%s | heldeelife'.",
+    "acceptance_criteria": [
+      "metadata.title.default is 'Your Journey to Holistic Wellness Starts Here'",
+      "openGraph.title and twitter.title use the new tagline",
+      "openGraph.images[0].alt uses the new tagline",
+      "Build succeeds and homepage document title shows new text"
+    ]
+  },
+  {
+    "story_id": "S-2",
+    "title": "Update PWA manifest app name to new tagline",
+    "description": "In public/manifest.json set name to 'Your Journey to Holistic Wellness Starts Here'. Keep short_name as 'heldeelife'.",
+    "acceptance_criteria": [
+      "manifest.json name field is 'Your Journey to Holistic Wellness Starts Here'",
+      "short_name remains 'heldeelife'",
+      "PWA install still works and shows new name when installed"
+    ]
+  }
+]

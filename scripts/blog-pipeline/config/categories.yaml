@@ -1,0 +1,16 @@
+# Category mapping rules
+# Maps source category hints to HeldeeLife blog categories.
+# Left side: category_hint from sources.yaml
+# Right side: category name as stored in Supabase
+
+mappings:
+  ayurveda: "Ayurveda"
+  wellness: "Wellness"
+  yoga: "Yoga"
+  nutrition: "Nutrition"
+  meditation: "Meditation"
+  fitness: "Fitness"
+  mental-health: "Mental Health"
+  skincare: "Skincare"
+  recipes: "Healthy Recipes"
+  lifestyle: "Lifestyle"
