@@ -31,17 +31,16 @@ export function HeroEnhanced() {
             {/* Interest: Headline with Value Proposition */}
             <div className="space-y-4">
               <p className="text-xs uppercase tracking-[0.2em] text-orange-600 font-light">
-                AUTHENTIC AYURVEDA • MODERN MEDICINE
+                AUTHENTIC AYURVEDA • MODERN CARE
               </p>
               <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold text-gray-900 leading-[1.1] tracking-tight">
-                Build a{' '}
-                <span className="text-orange-600">healthy Life</span>{' '}
-                with Us
+                Authentic Ayurveda and Modern Care for a{' '}
+                <span className="text-orange-600">Healthier You</span>
               </h1>
               <p className="text-xl md:text-2xl text-gray-600 max-w-xl leading-relaxed font-light">
-                Experience the perfect blend of ancient Ayurvedic wisdom and
-                modern medicine. Authentic products, expert guidance, and
-                personalized care for your complete well-being.
+                Whether you&apos;re building a daily routine or need expert
+                guidance, we&apos;re here with authentic products and
+                doctor-backed care—so you can feel your best, for good.
               </p>
             </div>
 
