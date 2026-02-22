@@ -13,8 +13,19 @@ import { authOptions } from '@/lib/auth-options'
  */
 export async function POST(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions)
-    if (!session?.user?.id) {
+    // Allow secret-based auth for pipeline/cron jobs
+    const revalidationSecret = request.headers.get('x-revalidation-secret')
+    const expectedSecret = process.env.REVALIDATION_SECRET
+
+    let authorized = false
+    if (revalidationSecret && expectedSecret && revalidationSecret === expectedSecret) {
+      authorized = true
+    } else {
+      const session = await getServerSession(authOptions)
+      authorized = !!session?.user?.id
+    }
+
+    if (!authorized) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 

@@ -1,0 +1,87 @@
+# Scraping source definitions
+# Each source defines selectors for extracting article content.
+#
+# Fields:
+#   name:          Unique identifier
+#   base_url:      Website root URL
+#   start_urls:    Pages to start crawling from
+#   allowed_domains: Restrict crawling to these domains
+#   selectors:     CSS selectors for content extraction
+#   pagination:    (optional) CSS selector for next page link
+#   rate_limit:    Delay between requests in seconds
+#   max_pages:     Max pagination pages to follow
+#   category_hint: Default category for articles from this source
+
+sources:
+  - name: healthline-nutrition
+    base_url: https://www.healthline.com
+    start_urls:
+      - https://www.healthline.com/nutrition
+    allowed_domains:
+      - www.healthline.com
+    selectors:
+      article_links: ".css-8atqhb a[href*='/nutrition/'], .css-1avyp1d a[href]"
+      title: "h1"
+      content: "#article-body, article .css-0"
+      tags: ".css-1kd5mng a, .css-1wbll7q a"
+      author: ".css-1duhyde, .css-1l8buln"
+      published_date: "time[datetime]"
+      featured_image: "article img:first-of-type, .css-19m6kpu img"
+    pagination: "a[rel='next']"
+    rate_limit: 3.0
+    max_pages: 2
+    category_hint: nutrition
+
+  - name: mindbodygreen-wellness
+    base_url: https://www.mindbodygreen.com
+    start_urls:
+      - https://www.mindbodygreen.com/articles
+    allowed_domains:
+      - www.mindbodygreen.com
+    selectors:
+      article_links: "article a[href*='/articles/'], .article-card a[href]"
+      title: "h1"
+      content: ".article-content, .post-content, article .content"
+      tags: ".tags a, .article-tags a"
+      author: ".author-name, .byline a"
+      published_date: "time[datetime]"
+      featured_image: "article img:first-of-type, .hero-image img"
+    pagination: "a.next, a[rel='next']"
+    rate_limit: 3.0
+    max_pages: 2
+    category_hint: wellness
+
+  - name: yogajournal
+    base_url: https://www.yogajournal.com
+    start_urls:
+      - https://www.yogajournal.com/lifestyle/
+    allowed_domains:
+      - www.yogajournal.com
+    selectors:
+      article_links: ".card a[href], article a[href]"
+      title: "h1"
+      content: ".article-body, .article__body, .entry-content"
+      tags: ".tags a, .article-tags a"
+      author: ".author-name a, .byline"
+      published_date: "time[datetime], .publish-date"
+      featured_image: ".featured-image img, article img:first-of-type"
+    pagination: "a.next, .pagination a[rel='next']"
+    rate_limit: 3.0
+    max_pages: 2
+    category_hint: yoga
+
+  # Template for adding your own source:
+  # - name: my-source
+  #   base_url: https://example.com
+  #   start_urls:
+  #     - https://example.com/blog
+  #   allowed_domains:
+  #     - example.com
+  #   selectors:
+  #     article_links: "article a[href]"
+  #     title: "h1"
+  #     content: ".post-content"
+  #     tags: ".tags a"
+  #   rate_limit: 2.0
+  #   max_pages: 5
+  #   category_hint: wellness

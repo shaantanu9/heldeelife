@@ -4,17 +4,51 @@ import { ShopClient } from './shop-client'
 import { Metadata } from 'next'
 import { Loader2 } from 'lucide-react'
 
-// Route segment config for ISR
-export const dynamic = 'force-dynamic'
+const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://heldeelife.com'
+
+// ISR - revalidate every 60 seconds for fresh product data
+export const revalidate = 60
 
 export const metadata: Metadata = {
-  title: 'Shop - heldeelife',
-  description: 'Browse our collection of Ayurveda and modern medicine products',
+  title: 'Shop Ayurveda & Wellness Products | heldeelife',
+  description:
+    'Browse and shop authentic Ayurveda products, herbal remedies, immunity boosters, and modern wellness solutions. Free shipping on orders above ₹499. Trusted by 50,000+ customers.',
+  keywords: [
+    'buy ayurveda products',
+    'ayurveda shop online',
+    'herbal products india',
+    'wellness products',
+    'immunity booster',
+    'cold relief',
+    'cough remedy',
+    'natural medicine',
+    'heldeelife shop',
+  ],
   openGraph: {
-    title: 'Shop - heldeelife',
+    title: 'Shop Ayurveda & Wellness Products | heldeelife',
     description:
-      'Browse our collection of Ayurveda and modern medicine products',
+      'Browse and shop authentic Ayurveda products, herbal remedies, and modern wellness solutions.',
     type: 'website',
+    url: `${baseUrl}/shop`,
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Shop Ayurveda & Wellness Products | heldeelife',
+    description:
+      'Browse and shop authentic Ayurveda products, herbal remedies, and modern wellness solutions.',
+  },
+  alternates: {
+    canonical: `${baseUrl}/shop`,
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      'max-image-preview': 'large',
+      'max-snippet': -1,
+    },
   },
 }
 
@@ -55,7 +89,56 @@ async function ShopContent({
     getProductCategories(),
   ])
 
-  return <ShopClient products={products} categories={categories} />
+  // Structured data for SEO and LLMs
+  const structuredData = {
+    '@context': 'https://schema.org',
+    '@type': 'CollectionPage',
+    name: 'heldeelife Shop - Ayurveda & Wellness Products',
+    description:
+      'Browse and shop authentic Ayurveda products, herbal remedies, and modern wellness solutions.',
+    url: `${baseUrl}/shop`,
+    mainEntity: {
+      '@type': 'ItemList',
+      numberOfItems: products.length,
+      itemListElement: products.slice(0, 20).map((product, index) => ({
+        '@type': 'ListItem',
+        position: index + 1,
+        item: {
+          '@type': 'Product',
+          name: product.name,
+          url: `${baseUrl}/products/${product.slug}`,
+          image: product.image || undefined,
+          description: product.short_description || product.description || '',
+          offers: {
+            '@type': 'Offer',
+            price: Number(product.price),
+            priceCurrency: 'INR',
+            availability:
+              product.inStock || (product.inventory && product.inventory[0]?.available_quantity > 0)
+                ? 'https://schema.org/InStock'
+                : 'https://schema.org/OutOfStock',
+          },
+        },
+      })),
+    },
+    provider: {
+      '@type': 'Organization',
+      name: 'heldeelife',
+      url: baseUrl,
+    },
+  }
+
+  return (
+    <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify(structuredData),
+        }}
+      />
+      <ShopClient products={products} categories={categories} />
+    </>
+  )
 }
 
 export default async function ShopPage({

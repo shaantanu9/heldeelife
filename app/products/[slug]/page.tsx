@@ -68,6 +68,20 @@ interface ProductPageProps {
   params: Promise<{ slug: string }>
 }
 
+// Pre-generate static pages for all active products at build time
+export async function generateStaticParams() {
+  const { supabaseAdmin } = await import('@/lib/supabase/server')
+  const { data: products } = await supabaseAdmin
+    .from('products')
+    .select('slug')
+    .eq('is_active', true)
+    .not('slug', 'is', null)
+
+  return (products || [])
+    .filter((p) => p.slug)
+    .map((product) => ({ slug: product.slug }))
+}
+
 // Generate metadata for SEO
 export async function generateMetadata({
   params,
