@@ -95,7 +95,7 @@ export function HeroEnhanced() {
                 className="bg-orange-600 hover:bg-orange-700 text-white shadow-lg hover:shadow-xl transition-all text-base px-8 py-6 h-auto"
               >
                 <Link href="/shop">
-                  Shop Authentic Products
+                  Shop Authentic Ayurveda
                   <ArrowRight className="ml-2 h-5 w-5" />
                 </Link>
               </Button>
@@ -105,7 +105,7 @@ export function HeroEnhanced() {
                 size="lg"
                 className="border-2 border-gray-300 hover:border-orange-500 text-gray-700 hover:text-orange-600 text-base px-8 py-6 h-auto"
               >
-                <Link href="/about">Learn Our Story</Link>
+                <Link href="/about">Our Story</Link>
               </Button>
             </div>
 
@@ -114,19 +114,19 @@ export function HeroEnhanced() {
               <div>
                 <p className="text-2xl font-bold text-gray-900">50K+</p>
                 <p className="text-xs text-gray-600 uppercase tracking-wide">
-                  Happy Customers
+                  Customers Trust Us
                 </p>
               </div>
               <div>
                 <p className="text-2xl font-bold text-gray-900">4.8★</p>
                 <p className="text-xs text-gray-600 uppercase tracking-wide">
-                  Average Rating
+                  Customer Rating
                 </p>
               </div>
               <div>
                 <p className="text-2xl font-bold text-gray-900">500+</p>
                 <p className="text-xs text-gray-600 uppercase tracking-wide">
-                  Products
+                  Authentic Products
                 </p>
               </div>
             </div>
