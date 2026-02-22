@@ -43,6 +43,35 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: 0.8,
     }))
 
+  // Get insights posts (blog posts in "insights" or "learning" categories)
+  const { data: insightsCategories } = await supabaseAdmin
+    .from('blog_categories')
+    .select('id')
+    .in('slug', ['insights', 'learning'])
+
+  const insightsCategoryIds = (insightsCategories || []).map((c) => c.id)
+
+  let insightsUrls: MetadataRoute.Sitemap = []
+  if (insightsCategoryIds.length > 0) {
+    const { data: insightsPosts } = await supabaseAdmin
+      .from('blog_posts')
+      .select('slug, updated_at, published_at')
+      .eq('status', 'published')
+      .in('category_id', insightsCategoryIds)
+      .order('published_at', { ascending: false })
+
+    insightsUrls = (insightsPosts || [])
+      .filter((post) => post.slug)
+      .map((post) => ({
+        url: `${baseUrl}/insights/${post.slug}`,
+        lastModified: new Date(
+          post.updated_at || post.published_at || new Date()
+        ),
+        changeFrequency: 'weekly' as const,
+        priority: 0.7,
+      }))
+  }
+
   // Static pages
   const staticPages: MetadataRoute.Sitemap = [
     {
@@ -64,12 +93,30 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: 0.8,
     },
     {
+      url: `${baseUrl}/insights`,
+      lastModified: new Date(),
+      changeFrequency: 'weekly',
+      priority: 0.8,
+    },
+    {
       url: `${baseUrl}/about`,
       lastModified: new Date(),
       changeFrequency: 'monthly',
       priority: 0.7,
     },
+    {
+      url: `${baseUrl}/contact`,
+      lastModified: new Date(),
+      changeFrequency: 'monthly',
+      priority: 0.5,
+    },
+    {
+      url: `${baseUrl}/faq`,
+      lastModified: new Date(),
+      changeFrequency: 'monthly',
+      priority: 0.5,
+    },
   ]
 
-  return [...staticPages, ...blogUrls, ...productUrls]
+  return [...staticPages, ...blogUrls, ...productUrls, ...insightsUrls]
 }
