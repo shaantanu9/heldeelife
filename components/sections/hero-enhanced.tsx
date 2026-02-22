@@ -25,23 +25,22 @@ export function HeroEnhanced() {
             {/* Attention: Trust Badge */}
             <div className="inline-flex items-center gap-2 px-4 py-2 bg-orange-50 border border-orange-200 rounded-full text-sm text-orange-700 font-medium">
               <Sparkles className="h-4 w-4" />
-              <span>Trusted by 50,000+ customers</span>
+              <span>Trusted by 50K+ for authentic Ayurveda &amp; modern care</span>
             </div>
 
             {/* Interest: Headline with Value Proposition */}
             <div className="space-y-4">
               <p className="text-xs uppercase tracking-[0.2em] text-orange-600 font-light">
-                AUTHENTIC AYURVEDA • MODERN MEDICINE
+                AUTHENTIC AYURVEDA • MODERN CARE
               </p>
               <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold text-gray-900 leading-[1.1] tracking-tight">
-                Build a{' '}
-                <span className="text-orange-600">healthy Life</span>{' '}
-                with Us
+                Authentic Ayurveda and Modern Care for a{' '}
+                <span className="text-orange-600">Healthier You</span>
               </h1>
               <p className="text-xl md:text-2xl text-gray-600 max-w-xl leading-relaxed font-light">
-                Experience the perfect blend of ancient Ayurvedic wisdom and
-                modern medicine. Authentic products, expert guidance, and
-                personalized care for your complete well-being.
+                Whether you&apos;re building a daily routine or need expert
+                guidance, we&apos;re here with authentic products and
+                doctor-backed care—so you can feel your best, for good.
               </p>
             </div>
 
@@ -56,7 +55,7 @@ export function HeroEnhanced() {
                     Authentic
                   </p>
                   <p className="text-xs text-gray-600">
-                    Certified products
+                    Certified Ayurvedic products
                   </p>
                 </div>
               </div>
@@ -66,10 +65,10 @@ export function HeroEnhanced() {
                 </div>
                 <div>
                   <p className="font-semibold text-gray-900 text-sm">
-                    Expert Care
+                    Doctor-Backed
                   </p>
                   <p className="text-xs text-gray-600">
-                    Doctor consultations
+                    Expert guidance when you need it
                   </p>
                 </div>
               </div>
@@ -82,7 +81,7 @@ export function HeroEnhanced() {
                     Trusted
                   </p>
                   <p className="text-xs text-gray-600">
-                    50K+ happy customers
+                    Rated 4.8★ by customers
                   </p>
                 </div>
               </div>
@@ -96,7 +95,7 @@ export function HeroEnhanced() {
                 className="bg-orange-600 hover:bg-orange-700 text-white shadow-lg hover:shadow-xl transition-all text-base px-8 py-6 h-auto"
               >
                 <Link href="/shop">
-                  Shop Authentic Products
+                  Shop Authentic Ayurveda
                   <ArrowRight className="ml-2 h-5 w-5" />
                 </Link>
               </Button>
@@ -106,7 +105,7 @@ export function HeroEnhanced() {
                 size="lg"
                 className="border-2 border-gray-300 hover:border-orange-500 text-gray-700 hover:text-orange-600 text-base px-8 py-6 h-auto"
               >
-                <Link href="/about">Learn Our Story</Link>
+                <Link href="/about">Our Story</Link>
               </Button>
             </div>
 
@@ -115,19 +114,19 @@ export function HeroEnhanced() {
               <div>
                 <p className="text-2xl font-bold text-gray-900">50K+</p>
                 <p className="text-xs text-gray-600 uppercase tracking-wide">
-                  Happy Customers
+                  Customers Trust Us
                 </p>
               </div>
               <div>
                 <p className="text-2xl font-bold text-gray-900">4.8★</p>
                 <p className="text-xs text-gray-600 uppercase tracking-wide">
-                  Average Rating
+                  Customer Rating
                 </p>
               </div>
               <div>
                 <p className="text-2xl font-bold text-gray-900">500+</p>
                 <p className="text-xs text-gray-600 uppercase tracking-wide">
-                  Products
+                  Authentic Products
                 </p>
               </div>
             </div>
