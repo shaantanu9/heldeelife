@@ -25,7 +25,7 @@ export function HeroEnhanced() {
             {/* Attention: Trust Badge */}
             <div className="inline-flex items-center gap-2 px-4 py-2 bg-orange-50 border border-orange-200 rounded-full text-sm text-orange-700 font-medium">
               <Sparkles className="h-4 w-4" />
-              <span>Trusted by 50,000+ customers</span>
+              <span>Trusted by 50K+ for authentic Ayurveda &amp; modern care</span>
             </div>
 
             {/* Interest: Headline with Value Proposition */}
@@ -55,7 +55,7 @@ export function HeroEnhanced() {
                     Authentic
                   </p>
                   <p className="text-xs text-gray-600">
-                    Certified products
+                    Certified Ayurvedic products
                   </p>
                 </div>
               </div>
@@ -65,10 +65,10 @@ export function HeroEnhanced() {
                 </div>
                 <div>
                   <p className="font-semibold text-gray-900 text-sm">
-                    Expert Care
+                    Doctor-Backed
                   </p>
                   <p className="text-xs text-gray-600">
-                    Doctor consultations
+                    Expert guidance when you need it
                   </p>
                 </div>
               </div>
@@ -81,7 +81,7 @@ export function HeroEnhanced() {
                     Trusted
                   </p>
                   <p className="text-xs text-gray-600">
-                    50K+ happy customers
+                    Rated 4.8★ by customers
                   </p>
                 </div>
               </div>
