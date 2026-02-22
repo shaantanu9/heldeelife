@@ -34,9 +34,9 @@ export function HeroEnhanced() {
                 AUTHENTIC AYURVEDA • MODERN MEDICINE
               </p>
               <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold text-gray-900 leading-[1.1] tracking-tight">
-                Your Journey to{' '}
-                <span className="text-orange-600">Holistic Wellness</span>{' '}
-                Starts Here
+                Build a{' '}
+                <span className="text-orange-600">healthy Life</span>{' '}
+                with Us
               </h1>
               <p className="text-xl md:text-2xl text-gray-600 max-w-xl leading-relaxed font-light">
                 Experience the perfect blend of ancient Ayurvedic wisdom and
