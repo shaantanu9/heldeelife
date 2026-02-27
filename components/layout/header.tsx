@@ -3,8 +3,9 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { useSession, signIn, signOut } from 'next-auth/react'
+import { useTheme } from 'next-themes'
 import { Button } from '@/components/ui/button'
-import { User, ShoppingBag, Menu, X, Search } from 'lucide-react'
+import { User, ShoppingBag, Menu, X, Search, Sun, Moon } from 'lucide-react'
 import { useCart } from '@/contexts/cart-context'
 import { ComparisonModal } from '@/components/conversion/product-comparison'
 import { Badge } from '@/components/ui/badge'
@@ -19,6 +20,8 @@ import {
 export function Header() {
   const { data: session } = useSession()
   const { totalItems } = useCart()
+  const { theme, resolvedTheme, setTheme } = useTheme()
+  const isDark = resolvedTheme === 'dark'
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
 
   const navLinks = [
@@ -30,11 +33,11 @@ export function Header() {
   ]
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b border-gray-200 bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/60 shadow-sm safe-area-inset-top">
+    <header className="sticky top-0 z-50 w-full border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 shadow-sm safe-area-inset-top">
       <div className="container flex h-16 items-center justify-between px-4">
         {/* Logo */}
         <Link href="/" className="flex items-center space-x-2 group">
-          <span className="text-xl md:text-2xl font-light tracking-wider text-gray-900 group-hover:text-orange-600 transition-colors">
+          <span className="text-xl md:text-2xl font-light tracking-wider text-foreground group-hover:text-orange-600 transition-colors">
             heldeelife
           </span>
         </Link>
@@ -45,7 +48,7 @@ export function Header() {
             <Link
               key={link.href}
               href={link.href}
-              className="text-sm font-light tracking-wide text-gray-700 hover:text-orange-600 transition-colors"
+              className="text-sm font-light tracking-wide text-muted-foreground hover:text-orange-600 transition-colors"
             >
               {link.label}
             </Link>
@@ -54,16 +57,31 @@ export function Header() {
 
         {/* Desktop Actions */}
         <div className="hidden md:flex items-center space-x-4">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="p-2 hover:bg-accent rounded-full text-muted-foreground hover:text-orange-600"
+            onClick={() => setTheme(isDark ? 'light' : 'dark')}
+            aria-label={
+              isDark ? 'Switch to light mode' : 'Switch to dark mode'
+            }
+          >
+            {isDark ? (
+              <Sun className="w-5 h-5" />
+            ) : (
+              <Moon className="w-5 h-5" />
+            )}
+          </Button>
           <Link
             href="/search"
-            className="p-2 hover:bg-orange-50 rounded-full transition-colors text-gray-600 hover:text-orange-600"
+            className="p-2 hover:bg-accent rounded-full transition-colors text-muted-foreground hover:text-orange-600"
             aria-label="Search"
           >
             <Search className="w-5 h-5" />
           </Link>
           <Link
             href="/cart"
-            className="relative p-2 hover:bg-orange-50 rounded-full transition-colors text-gray-600 hover:text-orange-600"
+            className="relative p-2 hover:bg-accent rounded-full transition-colors text-muted-foreground hover:text-orange-600"
             aria-label="Shopping cart"
           >
             <ShoppingBag className="w-5 h-5" />
@@ -96,14 +114,14 @@ export function Header() {
         <div className="flex md:hidden items-center space-x-2">
           <Link
             href="/search"
-            className="p-2 hover:bg-orange-50 rounded-full transition-colors text-gray-600 hover:text-orange-600"
+            className="p-2 hover:bg-accent rounded-full transition-colors text-muted-foreground hover:text-orange-600"
             aria-label="Search"
           >
             <Search className="w-5 h-5" />
           </Link>
           <Link
             href="/cart"
-            className="relative p-2 hover:bg-orange-50 rounded-full transition-colors text-gray-600 hover:text-orange-600"
+            className="relative p-2 hover:bg-accent rounded-full transition-colors text-muted-foreground hover:text-orange-600"
             aria-label="Shopping cart"
           >
             <ShoppingBag className="w-5 h-5" />
@@ -120,7 +138,7 @@ export function Header() {
               <Button
                 variant="ghost"
                 size="icon"
-                className="p-2 hover:bg-orange-50 rounded-full transition-colors text-gray-600 hover:text-orange-600"
+                className="p-2 hover:bg-accent rounded-full transition-colors text-muted-foreground hover:text-orange-600"
                 aria-label="Menu"
               >
                 {mobileMenuOpen ? (
@@ -140,12 +158,12 @@ export function Header() {
                     key={link.href}
                     href={link.href}
                     onClick={() => setMobileMenuOpen(false)}
-                    className="text-base font-medium text-gray-700 hover:text-orange-600 transition-colors py-2 border-b border-gray-100"
+                    className="text-base font-medium text-muted-foreground hover:text-orange-600 transition-colors py-2 border-b border-border"
                   >
                     {link.label}
                   </Link>
                 ))}
-                <div className="pt-4 border-t border-gray-200">
+                <div className="pt-4 border-t border-border">
                   {session ? (
                     <Button
                       onClick={() => {

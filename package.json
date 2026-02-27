@@ -21,7 +21,8 @@
     "verify:blog-ssg": "npx tsx scripts/verify-blog-ssg.ts",
     "seed:database": "npx tsx scripts/seed-database.ts",
     "backup:database": "npx tsx scripts/backup-database.ts",
-    "check:supabase": "npx tsx scripts/check-supabase-connection.ts"
+    "check:supabase": "npx tsx scripts/check-supabase-connection.ts",
+    "create:admin": "npx tsx scripts/create-admin-user.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",

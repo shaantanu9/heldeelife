@@ -31,6 +31,14 @@
     --chart-3: 197 37% 24%;
     --chart-4: 43 74% 66%;
     --chart-5: 27 87% 67%;
+    --sidebar-background: 0 0% 100%;
+    --sidebar-foreground: 222.2 84% 4.9%;
+    --sidebar-primary: 222.2 47.4% 11.2%;
+    --sidebar-primary-foreground: 210 40% 98%;
+    --sidebar-accent: 210 40% 96.1%;
+    --sidebar-accent-foreground: 222.2 47.4% 11.2%;
+    --sidebar-border: 214.3 31.8% 91.4%;
+    --sidebar-ring: 222.2 84% 4.9%;
   }
 
   .dark {
@@ -58,6 +66,14 @@
     --chart-3: 30 80% 55%;
     --chart-4: 280 65% 60%;
     --chart-5: 340 75% 55%;
+    --sidebar-background: 222.2 84% 4.9%;
+    --sidebar-foreground: 210 40% 98%;
+    --sidebar-primary: 210 40% 98%;
+    --sidebar-primary-foreground: 222.2 47.4% 11.2%;
+    --sidebar-accent: 217.2 32.6% 17.5%;
+    --sidebar-accent-foreground: 210 40% 98%;
+    --sidebar-border: 217.2 32.6% 17.5%;
+    --sidebar-ring: 212.7 26.8% 83.9%;
   }
 }
 
@@ -285,7 +301,7 @@
     sans-serif;
   font-size: 1.125rem; /* 18px */
   line-height: 1.75; /* 31.5px - optimal for reading */
-  color: #292929;
+  color: hsl(var(--foreground));
   letter-spacing: -0.003em;
   /* Fix text wrapping - prevent horizontal overflow */
   word-wrap: break-word;
@@ -307,7 +323,7 @@
   line-height: 1.2;
   margin-top: 2.5rem;
   margin-bottom: 1rem;
-  color: #292929;
+  color: hsl(var(--foreground));
   letter-spacing: -0.02em;
   word-wrap: break-word;
   overflow-wrap: break-word;
@@ -338,7 +354,7 @@
   margin-bottom: 1.5rem;
   font-size: 1.125rem;
   line-height: 1.75;
-  color: #292929;
+  color: hsl(var(--foreground));
   letter-spacing: -0.003em;
   word-wrap: break-word;
   overflow-wrap: break-word;
@@ -348,7 +364,7 @@
 
 /* Links */
 .blog-content a {
-  color: #ff6b35;
+  color: hsl(var(--primary));
   text-decoration: underline;
   text-underline-offset: 2px;
   transition: color 0.2s ease;
@@ -360,7 +376,7 @@
 }
 
 .blog-content a:hover {
-  color: #e55a2b;
+  opacity: 0.9;
   text-decoration: none;
 }
 
@@ -396,25 +412,25 @@
 
 /* Blockquotes */
 .blog-content blockquote {
-  border-left: 4px solid #ff6b35;
+  border-left: 4px solid hsl(var(--primary));
   padding-left: 1.5rem;
   margin: 2rem 0;
   font-style: italic;
-  color: #6b7280;
+  color: hsl(var(--muted-foreground));
   font-size: 1.25rem;
   line-height: 1.6;
 }
 
 /* Code */
 .blog-content code {
-  background-color: #f3f4f6;
+  background-color: hsl(var(--muted));
   padding: 0.125rem 0.375rem;
   border-radius: 0.25rem;
   font-size: 0.9em;
   font-family:
     ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, 'Liberation Mono',
     monospace;
-  color: #e55a2b;
+  color: hsl(var(--primary));
   word-wrap: break-word;
   overflow-wrap: break-word;
   word-break: break-all;
@@ -423,8 +439,8 @@
 }
 
 .blog-content pre {
-  background-color: #1f2937;
-  color: #f9fafb;
+  background-color: hsl(var(--muted));
+  color: hsl(var(--foreground));
   padding: 1.5rem;
   border-radius: 0.5rem;
   overflow-x: auto;
@@ -442,14 +458,14 @@
 /* Horizontal Rule */
 .blog-content hr {
   border: none;
-  border-top: 1px solid #e5e7eb;
+  border-top: 1px solid hsl(var(--border));
   margin: 3rem 0;
 }
 
 /* Strong and Emphasis */
 .blog-content strong {
   font-weight: 600;
-  color: #111827;
+  color: hsl(var(--foreground));
 }
 
 .blog-content em {
@@ -471,7 +487,7 @@
 .blog-content th,
 .blog-content td {
   padding: 0.75rem;
-  border: 1px solid #e5e7eb;
+  border: 1px solid hsl(var(--border));
   text-align: left;
   word-wrap: break-word;
   overflow-wrap: break-word;
@@ -480,9 +496,9 @@
 }
 
 .blog-content th {
-  background-color: #f9fafb;
+  background-color: hsl(var(--muted));
   font-weight: 600;
-  color: #111827;
+  color: hsl(var(--foreground));
 }
 
 /* Mobile Responsive */
@@ -538,12 +554,12 @@
 
 .blog-content .product-embed-placeholder {
   min-height: 200px;
-  background: linear-gradient(to right, #f3f4f6, #e5e7eb);
+  background: hsl(var(--muted));
   border-radius: 0.5rem;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #6b7280;
+  color: hsl(var(--muted-foreground));
   font-size: 0.875rem;
 }
 
@@ -562,7 +578,7 @@
   }
 
   .scrollbar-thin::-webkit-scrollbar-track {
-    @apply bg-gray-100 rounded-full;
+    @apply bg-muted rounded-full;
   }
 
   .scrollbar-thin::-webkit-scrollbar-thumb {
@@ -582,7 +598,7 @@
   }
 
   .scrollbar-track-gray-100::-webkit-scrollbar-track {
-    @apply bg-gray-100;
+    @apply bg-muted;
   }
 }
 

@@ -172,7 +172,7 @@ export default function RootLayout({
   }
 
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <head>
         {/* Organization structured data */}
         <script
@@ -205,7 +205,7 @@ export default function RootLayout({
 
         {/* SEO Meta Tags */}
         <meta name="theme-color" content="#FF6B35" />
-        <meta name="color-scheme" content="light" />
+        <meta name="color-scheme" content="light dark" />
         <meta name="language" content="English" />
         <meta name="geo.region" content="IN" />
         <meta name="geo.placename" content="India" />
@@ -234,7 +234,7 @@ export default function RootLayout({
         />
       </head>
       <body
-        className={`${inter.variable} ${playfair.variable} ${inter.className} bg-gradient-to-br from-slate-50 via-white to-orange-50/40 min-h-screen`}
+        className={`${inter.variable} ${playfair.variable} ${inter.className} min-h-screen`}
         suppressHydrationWarning
       >
         <Providers>

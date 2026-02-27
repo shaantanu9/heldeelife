@@ -4,7 +4,12 @@ import json
 import httpx
 
 from pipeline.rewriter.base import BaseRewriter
-from pipeline.rewriter.prompts import get_system_prompt, get_rewrite_prompt, get_metadata_prompt
+from pipeline.rewriter.prompts import (
+    get_system_prompt,
+    get_rewrite_prompt,
+    get_topic_rewrite_prompt,
+    get_metadata_prompt,
+)
 from pipeline.rewriter.schemas import RewrittenArticle
 
 
@@ -34,13 +39,19 @@ class OllamaRewriter(BaseRewriter):
         return response.json()["message"]["content"]
 
     def rewrite(self, raw_article: dict) -> dict:
-        """Two-step rewrite: content then metadata."""
+        """Two-step rewrite: content then metadata. Supports topic-only (no source)."""
         title = raw_article.get("raw_title", "")
         content = raw_article.get("raw_content_text", "")
+        topic_only = raw_article.get("topic_only", False)
+        topic = raw_article.get("topic", title)
+
+        system = get_system_prompt()
+        if topic_only:
+            rewrite_prompt = get_topic_rewrite_prompt(topic)
+        else:
+            rewrite_prompt = get_rewrite_prompt(title, content[:5000])
 
         # Step 1: Rewrite content
-        system = get_system_prompt()
-        rewrite_prompt = get_rewrite_prompt(title, content[:5000])
         rewritten_html = self._chat(system, rewrite_prompt)
 
         # Step 2: Generate metadata

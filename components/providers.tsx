@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useMemo } from 'react'
+import { ThemeProvider } from 'next-themes'
 import { QueryClientProvider } from '@tanstack/react-query'
 import { SessionProvider } from 'next-auth/react'
 import { CartProvider } from '@/contexts/cart-context'
@@ -57,36 +58,44 @@ export function Providers({ children }: { children: React.ReactNode }) {
   const providers = useMemo(
     () => (
       <QueryClientProvider client={queryClient}>
-        <SessionProvider>
-          <AuthProvider>
-            <ShoppingProvider>
-              <CartProvider>
-                <OrderProvider>
-                  <TrackingProvider>
-                    <WishlistProvider>
-                      <ComparisonProvider>
-                        <AbandonedCartProvider>
-                          <ToastProvider>
-                            <AnalyticsInitializer />
-                            {children}
-                            {/* Performance Monitoring - only in production */}
-                            {process.env.NODE_ENV === 'production' && (
-                              <PerformanceMonitor />
-                            )}
-                            {/* React Query DevTools - only in development and if package is installed */}
-                            {process.env.NODE_ENV === 'development' && (
-                              <ReactQueryDevtools initialIsOpen={false} />
-                            )}
-                          </ToastProvider>
-                        </AbandonedCartProvider>
-                      </ComparisonProvider>
-                    </WishlistProvider>
-                  </TrackingProvider>
-                </OrderProvider>
-              </CartProvider>
-            </ShoppingProvider>
-          </AuthProvider>
-        </SessionProvider>
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="system"
+          enableSystem
+          disableTransitionOnChange={false}
+          storageKey="heldeelife-theme"
+        >
+          <SessionProvider>
+            <AuthProvider>
+              <ShoppingProvider>
+                <CartProvider>
+                  <OrderProvider>
+                    <TrackingProvider>
+                      <WishlistProvider>
+                        <ComparisonProvider>
+                          <AbandonedCartProvider>
+                            <ToastProvider>
+                              <AnalyticsInitializer />
+                              {children}
+                              {/* Performance Monitoring - only in production */}
+                              {process.env.NODE_ENV === 'production' && (
+                                <PerformanceMonitor />
+                              )}
+                              {/* React Query DevTools - only in development and if package is installed */}
+                              {process.env.NODE_ENV === 'development' && (
+                                <ReactQueryDevtools initialIsOpen={false} />
+                              )}
+                            </ToastProvider>
+                          </AbandonedCartProvider>
+                        </ComparisonProvider>
+                      </WishlistProvider>
+                    </TrackingProvider>
+                  </OrderProvider>
+                </CartProvider>
+              </ShoppingProvider>
+            </AuthProvider>
+          </SessionProvider>
+        </ThemeProvider>
       </QueryClientProvider>
     ),
     [queryClient, children]

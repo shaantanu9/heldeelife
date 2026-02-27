@@ -334,6 +334,37 @@ python -m pipeline.cli publish -n 2
 
 **Output:** Posts appear in Supabase and your admin panel
 
+### `write` - Write a blog draft from a topic (no URL)
+
+Takes a **topic** as input, uses the rewriter and all prompts in `config/prompts.yaml` (including product integration from `config/products.json`), and saves a blog draft. Products are woven into the post so they feel like part of the blog, not ads.
+
+```bash
+# Write a draft and save to Supabase as draft (needs PIPELINE_DEFAULT_AUTHOR_ID or --author-id)
+python -m pipeline.cli write "Immunity tips for monsoon season"
+
+# Only generate and save to data/rewritten/ (do not push to Supabase)
+python -m pipeline.cli write "Natural remedies for cold and cough" --no-publish
+
+# Use a specific provider and category hint
+python -m pipeline.cli write "Nasal congestion relief" --provider claude --category nasal_care
+
+# Publish as draft with explicit author
+python -m pipeline.cli write "Ayurvedic kadha benefits" --author-id "your-uuid"
+```
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `TOPIC` | (required) | The blog topic (e.g. "Immunity tips for monsoon") |
+| `--provider` | `cli-agent` | LLM provider (same as `rewrite`) |
+| `--model` | varies | Model name or CLI command |
+| `--author-id` | From `.env` | Author UUID when publishing draft |
+| `--no-publish` | off | If set, only save to `data/rewritten/`; do not push to Supabase |
+| `--category` | `""` | Category hint (e.g. `immunity`, `cold_relief`, `nasal_care`) |
+
+**Flow:** topic → LLM (rewrite + metadata) using `config/prompts.yaml` and **config/products.json** → save to `data/rewritten/<slug>.json` → optionally publish as **draft** to Supabase.
+
+**Product config:** Products are defined in **`config/products.json`**. The rewriter injects 1–3 relevant products (by category) into the post so they read as editorial advice. See [Product config (products.json)](#product-config-productsjson) and [config/REWRITER-PRODUCT-SEO-GUIDE.md](config/REWRITER-PRODUCT-SEO-GUIDE.md).
+
 ### `run` - Full pipeline
 
 Runs all three steps in sequence: scrape -> rewrite -> publish.
@@ -510,6 +541,20 @@ mappings:
   lifestyle: "Lifestyle"
 ```
 
+### Rewriter, product linking & SEO (canonical guide)
+
+For how the rewriter works, how product linking and ranking are set up, and how to keep it working properly, see:
+
+- **[config/REWRITER-PRODUCT-SEO-GUIDE.md](config/REWRITER-PRODUCT-SEO-GUIDE.md)** — single reference for rewriter goals, product linking (products.json), and SEO. Use this so AI or developers can "get it properly" and maintain the pipeline.
+
+Related config: `config/prompts.yaml`, `config/products.json`, and `config/README-products.md`.
+
+### Product config (products.json)
+
+**Location:** `scripts/blog-pipeline/config/products.json`
+
+This JSON file lists HeldeeLife products (name, URL, category, short_name). The rewriter uses it for **every** rewrite and for the **`write`** command: it picks 1–3 products that match the article topic (e.g. cold/cough → `cold_relief`, immunity → `immunity`) and weaves them in as brief, contextual mentions with a single link each—so they feel like part of the blog, not ads. Edit this file to add or change products; categories should match the hints used in prompts (e.g. `nasal_care`, `cold_relief`, `immunity`). See **config/README-products.md** for the schema and **config/REWRITER-PRODUCT-SEO-GUIDE.md** for the full strategy.
+
 ### Customizing LLM Prompts
 
 Edit `config/prompts.yaml` to change the brand voice, rewriting instructions, or metadata format:
@@ -582,6 +627,9 @@ scripts/blog-pipeline/
 |   +-- sources.yaml              # Scraping source definitions
 |   +-- categories.yaml           # Category mapping rules
 |   +-- prompts.yaml              # LLM prompt templates
+|   +-- products.json             # Product list for linking (name, URL, category)
+|   +-- REWRITER-PRODUCT-SEO-GUIDE.md   # Canonical guide: rewriter, products, SEO
+|   +-- README-products.md        # How to edit products.json
 |
 +-- pipeline/
 |   +-- __init__.py

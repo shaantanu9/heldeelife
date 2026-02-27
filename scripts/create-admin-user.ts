@@ -61,22 +61,58 @@ async function createAdminUser() {
         },
       })
 
+    type AuthUser = { id: string; email?: string; user_metadata?: Record<string, unknown> }
+    let userForProfile: AuthUser
+
     if (authError) {
-      console.error('Error creating auth user:', authError)
-      throw authError
-    }
-
-    if (!authData.user) {
+      if (
+        authError.message?.includes('already been registered') ||
+        (authError as { code?: string }).code === 'email_exists'
+      ) {
+        console.log('User already exists, looking up to promote to admin...')
+        let existing: AuthUser | null = null
+        let page = 1
+        const perPage = 500
+        while (true) {
+          const { data } = await supabaseAdmin.auth.admin.listUsers({
+            page,
+            perPage,
+          })
+          const match = data?.users?.find((u) => u.email === email)
+          if (match) {
+            existing = match
+            break
+          }
+          const pagination = data as { total?: number } | undefined
+          const total = pagination?.total ?? 0
+          if (page * perPage >= total || !data?.users?.length) break
+          page += 1
+        }
+        if (!existing) {
+          console.error('Could not find existing user by email:', email)
+          throw authError
+        }
+        userForProfile = existing
+        console.log('✅ Found existing auth user:', userForProfile.id)
+      } else {
+        console.error('Error creating auth user:', authError)
+        throw authError
+      }
+    } else if (!authData.user) {
       throw new Error('User creation failed - no user data returned')
+    } else {
+      userForProfile = authData.user
+      console.log('✅ Auth user created:', userForProfile.id)
     }
-
-    console.log('✅ Auth user created:', authData.user.id)
 
     // Create/update user profile in public.users table with admin role
+    const fullName =
+      (userForProfile.user_metadata?.full_name as string) || 'Admin User'
     const { error: profileError } = await supabaseAdmin.from('users').upsert(
       {
-        id: authData.user.id,
-        email: authData.user.email || email,
+        id: userForProfile.id,
+        email: userForProfile.email || email,
+        full_name: fullName,
         role: 'admin',
       },
       {
@@ -89,16 +125,16 @@ async function createAdminUser() {
       throw profileError
     }
 
-    console.log('✅ User profile created with admin role')
+    console.log('✅ User profile created/updated with admin role')
 
-    console.log('\n🎉 Admin user created successfully!')
+    console.log('\n🎉 Admin user ready!')
     console.log('Email:', email)
     console.log('Password:', password)
-    console.log('User ID:', authData.user.id)
+    console.log('User ID:', userForProfile.id)
     console.log('Role: admin')
     console.log('\nYou can now sign in at /auth/signin')
 
-    return authData.user
+    return userForProfile
   } catch (error) {
     console.error('Failed to create admin user:', error)
     throw error

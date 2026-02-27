@@ -273,3 +273,137 @@ export function extractStructuredContent(html: string): {
 
   return { headings, paragraphs, lists, text }
 }
+
+/**
+ * Convert blog HTML content to Markdown for parsers and LLMs.
+ * Produces clean MD with headings, lists, links, and emphasis so content
+ * can be fetched and understood without HTML noise.
+ */
+export function htmlToMarkdown(html: string): string {
+  if (!html || typeof html !== 'string') return ''
+
+  let md = html
+
+  // Strip script and style
+  md = md.replace(/<script[\s\S]*?<\/script>/gi, '')
+  md = md.replace(/<style[\s\S]*?<\/style>/gi, '')
+
+  // Block elements: add newlines so we don't glue lines
+  md = md.replace(/<\/?(p|div|h[1-6]|li|tr|blockquote)[^>]*>/gi, '\n$&\n')
+
+  // Headings: <h1>...</h1> -> # ..., etc.
+  md = md.replace(/<h([1-6])[^>]*>(.*?)<\/h[1-6]>/gi, (_, level, inner) => {
+    const prefix = '#'.repeat(parseInt(level, 10))
+    const text = inner.replace(/<[^>]*>/g, '').trim()
+    return `\n\n${prefix} ${text}\n\n`
+  })
+
+  // Links: <a href="...">text</a> -> [text](url)
+  md = md.replace(
+    /<a[^>]*href\s*=\s*["']([^"']*)["'][^>]*>(.*?)<\/a>/gi,
+    (_, url, text) => {
+      const t = text.replace(/<[^>]*>/g, '').trim()
+      return `[${t}](${url})`
+    }
+  )
+
+  // Strong/bold
+  md = md.replace(/<(strong|b)[^>]*>(.*?)<\/(strong|b)>/gi, '**$2**')
+
+  // Em/italic
+  md = md.replace(/<(em|i)[^>]*>(.*?)<\/(em|i)>/gi, '*$2*')
+
+  // Blockquote
+  md = md.replace(/<blockquote[^>]*>(.*?)<\/blockquote>/gi, (_, inner) => {
+    const lines = inner
+      .replace(/<[^>]*>/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim()
+      .split(/\n/)
+    return '\n\n' + lines.map((l) => '> ' + l.trim()).join('\n') + '\n\n'
+  })
+
+  // Unordered list: <ul>...</ul> with <li>...</li>
+  md = md.replace(/<ul[^>]*>(.*?)<\/ul>/gis, (_, inner) => {
+    const items = (inner.match(/<li[^>]*>(.*?)<\/li>/gi) || []).map((li) => {
+      const t = li.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim()
+      return '- ' + t
+    })
+    return '\n\n' + items.join('\n') + '\n\n'
+  })
+
+  // Ordered list
+  md = md.replace(/<ol[^>]*>(.*?)<\/ol>/gis, (_, inner) => {
+    const items = (inner.match(/<li[^>]*>(.*?)<\/li>/gi) || []).map(
+      (li, i) => {
+        const t = li.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim()
+        return `${i + 1}. ${t}`
+      }
+    )
+    return '\n\n' + items.join('\n') + '\n\n'
+  })
+
+  // Paragraphs: <p>...</p> -> content + double newline
+  md = md.replace(/<p[^>]*>(.*?)<\/p>/gi, (_, inner) => {
+    const t = inner.replace(/<[^>]*>/g, '').trim()
+    return t ? `${t}\n\n` : ''
+  })
+
+  // Line breaks
+  md = md.replace(/<br\s*\/?>/gi, '\n')
+
+  // Remove any remaining tags
+  md = md.replace(/<[^>]*>/g, '')
+
+  // Decode common entities
+  md = md
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+
+  // Normalize whitespace
+  md = md.replace(/\n{3,}/g, '\n\n').replace(/[ \t]+/g, ' ').trim()
+
+  return md
+}
+
+/**
+ * Build full Markdown document for a blog post with YAML frontmatter.
+ * Links to the actual page via canonical URL so parsers/LLMs can associate
+ * this content with the live blog URL for ranking and indexing.
+ */
+export function buildBlogMarkdownDocument(
+  post: {
+    title: string
+    slug: string
+    excerpt?: string | null
+    content: string
+    published_at?: string | null
+    updated_at?: string | null
+  },
+  baseUrl: string
+): string {
+  const canonical = `${baseUrl}/blog/${post.slug}`
+  const mdBody = htmlToMarkdown(post.content || '')
+
+  const frontmatter: Record<string, string> = {
+    title: post.title,
+    canonical: canonical,
+    url: canonical,
+  }
+  if (post.excerpt) frontmatter.excerpt = post.excerpt
+  if (post.published_at) frontmatter.date = post.published_at
+  if (post.updated_at) frontmatter.updated_at = post.updated_at
+
+  const yamlLines = Object.entries(frontmatter)
+    .map(([k, v]) => {
+      const s = String(v).replace(/\\/g, '\\\\').replace(/"/g, '\\"').replace(/\n/g, ' ')
+      return `${k}: "${s}"`
+    })
+    .join('\n')
+
+  return `---\n${yamlLines}\n---\n\n# ${post.title}\n\n${post.excerpt ? post.excerpt + '\n\n' : ''}${mdBody}`
+}

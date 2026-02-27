@@ -65,9 +65,18 @@ export async function generateMetadata({
 
   const baseUrlForMetadata =
     process.env.NEXT_PUBLIC_SITE_URL || 'https://heldeelife.com'
+  const markdownAlternateUrl = `${baseUrlForMetadata}/blog/${post.slug}/markdown`
 
   return {
     title: post.meta_title || post.title,
+    links: [
+      {
+        rel: 'alternate',
+        type: 'text/markdown',
+        href: markdownAlternateUrl,
+        title: `${post.title} (Markdown)`,
+      },
+    ],
     description:
       post.meta_description || post.excerpt || 'Read our latest article',
     keywords: [

@@ -333,6 +333,28 @@ export default function NewBlogPostPage() {
                   </p>
                 </div>
 
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-base flex items-center gap-2">
+                      <Eye className="h-4 w-4" />
+                      Preview
+                    </CardTitle>
+                    <CardDescription>
+                      See how your post will look. Save to use &quot;Preview on
+                      site&quot; from the edit page.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <BlogPreview
+                      title={title || ''}
+                      content={content ?? ''}
+                      excerpt={watch('excerpt') || ''}
+                      featuredImage={featuredImage || ''}
+                      metaDescription={metaDescription || ''}
+                    />
+                  </CardContent>
+                </Card>
+
                 <div>
                   <ImageUpload
                     value={featuredImage || ''}
@@ -519,15 +541,7 @@ export default function NewBlogPostPage() {
           </div>
         </div>
 
-        <div className="flex items-center justify-between">
-          <BlogPreview
-            title={title || ''}
-            content={content || ''}
-            excerpt={watch('excerpt') || ''}
-            featuredImage={featuredImage || ''}
-            metaDescription={metaDescription || ''}
-          />
-          <div className="flex items-center gap-4">
+        <div className="flex items-center justify-end gap-4">
             <Link href="/admin/blog">
               <Button type="button" variant="outline">
                 Cancel

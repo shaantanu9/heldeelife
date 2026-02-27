@@ -96,18 +96,27 @@ export function RichTextEditor({
 
     const currentContent = editor.getHTML()
     const normalizedContent = content || ''
-    const normalizedCurrent = currentContent || ''
+    const normalizedCurrent = (currentContent || '').trim()
 
-    // Only update if:
-    // 1. Content prop changed from last known value (external change)
-    // 2. Content is different from current editor content
-    // This prevents updating when user is typing (onChange -> content prop update -> this effect)
-    if (
+    // Editor is "empty" when it only has default TipTap placeholder
+    const editorIsEmpty =
+      !normalizedCurrent ||
+      normalizedCurrent === '' ||
+      normalizedCurrent === '<p></p>' ||
+      normalizedCurrent === '<p></p>\n'
+
+    // External load: content prop has value but editor is empty (e.g. edit page just loaded post)
+    const shouldSyncOnLoad =
+      normalizedContent.length > 0 && editorIsEmpty
+
+    // External change: content prop changed from last synced value and differs from editor
+    const externalContentChanged =
       normalizedContent !== lastContentRef.current &&
-      normalizedContent !== normalizedCurrent &&
-      normalizedContent !== undefined &&
-      normalizedContent !== null &&
-      normalizedContent !== ''
+      normalizedContent !== normalizedCurrent
+
+    if (
+      normalizedContent.length > 0 &&
+      (shouldSyncOnLoad || externalContentChanged)
     ) {
       try {
         editor.commands.setContent(normalizedContent, { emitUpdate: false })
@@ -116,7 +125,6 @@ export function RichTextEditor({
         console.error('Error setting editor content:', error)
       }
     } else if (normalizedContent === normalizedCurrent) {
-      // Keep ref in sync when content matches (user finished editing)
       lastContentRef.current = normalizedContent
     }
   }, [content, editor, mounted])

@@ -26,7 +26,7 @@ import {
   CardTitle,
 } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { ArrowLeft, Save, Eye, Loader2 } from 'lucide-react'
+import { ArrowLeft, Save, Eye, Loader2, ExternalLink, Monitor } from 'lucide-react'
 import Link from 'next/link'
 import { toast } from 'sonner'
 import { generateSlug, generateKeywords } from '@/lib/utils/blog'
@@ -376,7 +376,8 @@ export default function EditBlogPostPage() {
                 <div>
                   <Label htmlFor="content">Content *</Label>
                   <RichTextEditor
-                    content={content || ''}
+                    key={post?.id}
+                    content={content ?? post?.content ?? ''}
                     onChange={(html) => setValue('content', html)}
                     placeholder="Write your blog post content here..."
                   />
@@ -389,6 +390,50 @@ export default function EditBlogPostPage() {
                     {content?.replace(/<[^>]*>/g, '').length || 0} characters
                   </p>
                 </div>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-base flex items-center gap-2">
+                      <Eye className="h-4 w-4" />
+                      Preview
+                    </CardTitle>
+                    <CardDescription>
+                      See how your post will look. Preview on site opens in a
+                      new tab.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="flex flex-wrap gap-2">
+                    <BlogPreview
+                      title={title || ''}
+                      content={content ?? ''}
+                      excerpt={watch('excerpt') || ''}
+                      featuredImage={featuredImage || ''}
+                      metaDescription={metaDescription || ''}
+                    />
+                    <Link
+                      href={`/blog/preview/${postId}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      <Button variant="outline" size="sm" className="gap-2">
+                        <ExternalLink className="h-4 w-4" />
+                        Preview on site
+                      </Button>
+                    </Link>
+                    {post?.status === 'published' && post?.slug && (
+                      <Link
+                        href={`/blog/${post.slug}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        <Button variant="outline" size="sm" className="gap-2">
+                          <Monitor className="h-4 w-4" />
+                          View live
+                        </Button>
+                      </Link>
+                    )}
+                  </CardContent>
+                </Card>
 
                 <div>
                   <ImageUpload
@@ -515,18 +560,6 @@ export default function EditBlogPostPage() {
                       Last saved: {lastSaved.toLocaleTimeString()}
                     </div>
                   )}
-                  {post.status === 'published' && (
-                    <Link
-                      href={`/blog/${post.slug}`}
-                      target="_blank"
-                      className="block"
-                    >
-                      <Button variant="outline" size="sm" className="w-full">
-                        <Eye className="h-4 w-4 mr-2" />
-                        View Post
-                      </Button>
-                    </Link>
-                  )}
                 </div>
               </CardContent>
             </Card>
@@ -574,15 +607,7 @@ export default function EditBlogPostPage() {
           </div>
         </div>
 
-        <div className="flex items-center justify-between">
-          <BlogPreview
-            title={title || ''}
-            content={content || ''}
-            excerpt={watch('excerpt') || ''}
-            featuredImage={featuredImage || ''}
-            metaDescription={metaDescription || ''}
-          />
-          <div className="flex items-center gap-4">
+        <div className="flex items-center justify-end gap-4">
             <Link href="/admin/blog">
               <Button type="button" variant="outline">
                 Cancel

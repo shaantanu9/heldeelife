@@ -30,16 +30,14 @@ export function BlogPreview({
         type="button"
         variant="outline"
         onClick={() => setIsOpen(true)}
-        className="w-full"
+        className="w-full gap-2"
+        aria-label="Open live preview in modal"
       >
-        <Eye className="h-4 w-4 mr-2" />
-        Preview
+        <Eye className="h-4 w-4" />
+        Live preview (modal)
       </Button>
     )
   }
-
-  // Extract plain text from HTML for preview
-  const plainContent = content.replace(/<[^>]*>/g, '')
 
   return (
     <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
@@ -70,6 +68,7 @@ export function BlogPreview({
             variant="ghost"
             size="sm"
             onClick={() => setIsOpen(false)}
+            aria-label="Close preview"
           >
             <X className="h-4 w-4" />
           </Button>
@@ -79,27 +78,31 @@ export function BlogPreview({
         <div
           className={`${
             previewMode === 'mobile' ? 'max-w-sm mx-auto' : 'max-w-4xl mx-auto'
-          } p-6 bg-white min-h-full`}
+          } p-6 bg-background min-h-full`}
         >
           {/* SEO Preview */}
-          <div className="mb-8 p-4 bg-gray-50 rounded-lg border">
-            <h3 className="text-sm font-semibold mb-2">Search Engine Preview</h3>
+          <div className="mb-8 p-4 bg-muted rounded-lg border border-border">
+            <h3 className="text-sm font-semibold mb-2 text-foreground">
+              Search Engine Preview
+            </h3>
             <div className="space-y-1">
-              <div className="text-lg text-blue-600 hover:underline cursor-pointer">
+              <div className="text-lg text-primary hover:underline cursor-pointer">
                 {title || 'Your Post Title'}
               </div>
-              <div className="text-sm text-green-700">
+              <div className="text-sm text-muted-foreground">
                 {process.env.NEXT_PUBLIC_SITE_URL || 'https://heldeelife.com'}
                 /blog/{title?.toLowerCase().replace(/\s+/g, '-') || 'post-slug'}
               </div>
-              <div className="text-sm text-gray-600">
-                {metaDescription || excerpt || 'Post description will appear here...'}
+              <div className="text-sm text-muted-foreground">
+                {metaDescription ||
+                  excerpt ||
+                  'Post description will appear here...'}
               </div>
             </div>
           </div>
 
           {/* Blog Post Preview */}
-          <article>
+          <article className="min-h-[200px]">
             {featuredImage && (
               <div className="relative w-full h-64 mb-6 rounded-lg overflow-hidden">
                 <Image
@@ -112,15 +115,25 @@ export function BlogPreview({
               </div>
             )}
 
-            <h1 className="text-4xl font-bold mb-4">{title || 'Your Post Title'}</h1>
+            <h1 className="text-4xl font-bold mb-4 text-foreground">
+              {title || 'Your Post Title'}
+            </h1>
 
             {excerpt && (
-              <p className="text-xl text-gray-600 mb-6 italic">{excerpt}</p>
+              <p className="text-xl text-muted-foreground mb-6 italic">
+                {excerpt}
+              </p>
             )}
 
             <div
-              className="prose prose-lg max-w-none"
-              dangerouslySetInnerHTML={{ __html: content || '<p>Start writing your content...</p>' }}
+              key={typeof content === 'string' ? content.length : 0}
+              className="prose prose-lg dark:prose-invert max-w-none min-h-[120px] overflow-visible prose-p:text-foreground prose-headings:text-foreground prose-li:text-foreground"
+              dangerouslySetInnerHTML={{
+                __html:
+                  typeof content === 'string' && content.trim()
+                    ? content
+                    : '<p class="text-muted-foreground">Start writing your content...</p>',
+              }}
             />
           </article>
         </div>

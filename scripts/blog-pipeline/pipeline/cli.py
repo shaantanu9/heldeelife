@@ -2,12 +2,21 @@
 from __future__ import annotations
 
 import json
+import re
 import glob as globmod
 from pathlib import Path
 
 import click
 
 from pipeline.settings import get_settings, ensure_dirs, RAW_DIR, REWRITTEN_DIR
+
+
+def _slug_for_filename(text: str) -> str:
+    """URL-friendly slug for use in filenames (no Supabase check)."""
+    s = text.lower().strip()
+    s = re.sub(r"[^\w\s-]", "", s)
+    s = re.sub(r"[\s_-]+", "-", s)
+    return s.strip("-")[:60] or "topic"
 
 
 @click.group()
@@ -162,6 +171,95 @@ def run(provider: str, model: str | None, author_id: str | None, status: str, so
     ctx.invoke(publish, status=status, author_id=author_id, limit=limit)
 
     click.echo("\nPipeline complete.")
+
+
+@cli.command()
+@click.argument("topic", required=True)
+@click.option(
+    "--provider",
+    type=click.Choice(["ollama", "claude", "cli-agent"]),
+    default="cli-agent",
+    help="LLM provider for writing the blog post",
+)
+@click.option("--model", default=None, help="Model name or CLI command")
+@click.option(
+    "--author-id",
+    default=None,
+    help="Author UUID for the draft (or set PIPELINE_DEFAULT_AUTHOR_ID)",
+)
+@click.option(
+    "--no-publish",
+    is_flag=True,
+    help="Only save to data/rewritten/, do not push draft to Supabase",
+)
+@click.option(
+    "--category",
+    default="",
+    help="Category hint (e.g. immunity, cold_relief) for the post",
+)
+def write(
+    topic: str,
+    provider: str,
+    model: str | None,
+    author_id: str | None,
+    no_publish: bool,
+    category: str,
+):
+    """Write a blog draft from a topic using rewriter + prompts (products from config/products.json)."""
+    from pipeline.rewriter.base import get_rewriter
+    from pipeline.publisher.supabase_client import publish_article
+
+    settings = get_settings()
+    rewriter = get_rewriter(provider, model, settings)
+
+    raw_article = {
+        "topic_only": True,
+        "topic": topic.strip(),
+        "raw_title": topic.strip(),
+        "raw_content_text": topic.strip(),
+        "category_hint": category.strip(),
+    }
+
+    click.echo(f"Writing blog post for topic: {topic}")
+    click.echo(f"Using provider: {provider} (products from config/products.json)")
+    click.echo("This may take 2–5 minutes depending on the LLM...")
+    try:
+        result = rewriter.rewrite(raw_article)
+    except Exception as e:
+        click.echo(f"ERROR: {e}", err=True)
+        import traceback
+        traceback.print_exc()
+        raise click.Abort()
+
+    slug = result.get("slug", "").strip() or _slug_for_filename(topic)
+    safe_name = f"{slug}.json"
+    out_path = Path(REWRITTEN_DIR) / safe_name
+    out_path.write_text(json.dumps(result, indent=2, ensure_ascii=False))
+    click.echo(f"Saved: {out_path}")
+
+    if no_publish:
+        click.echo("Skipping publish (--no-publish). Run: pipeline publish --status draft -n 1")
+        return
+
+    author = author_id or settings.pipeline_default_author_id
+    if not author:
+        click.echo(
+            "ERROR: Set --author-id or PIPELINE_DEFAULT_AUTHOR_ID to publish draft.",
+            err=True,
+        )
+        click.echo("Draft saved to data/rewritten/; publish later with: pipeline publish -n 1")
+        return
+
+    try:
+        published_slug = publish_article(result, author_id=author, status="draft", settings=settings)
+        click.echo(f"Published as DRAFT: /blog/{published_slug}")
+        # Move to done so it is not published again by a full publish run
+        done_dir = Path(REWRITTEN_DIR) / "done"
+        done_dir.mkdir(exist_ok=True)
+        out_path.rename(done_dir / out_path.name)
+    except Exception as e:
+        click.echo(f"Publish failed: {e}", err=True)
+        click.echo("Draft file left in data/rewritten/; fix credentials and run: pipeline publish -n 1")
 
 
 @cli.command()

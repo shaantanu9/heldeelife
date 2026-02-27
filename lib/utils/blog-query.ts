@@ -177,12 +177,76 @@ export async function getBlogPostOptimized(slug: string) {
       return null
     }
 
-    return {
+    const post = {
       ...data,
       tags: data.tags?.map((pt: any) => pt.tag) || [],
     }
+    if (post.author_id) {
+      const { data: user } = await supabaseAdmin
+        .from('users')
+        .select('id, full_name, email')
+        .eq('id', post.author_id)
+        .single()
+      if (user) {
+        ;(post as any).author = {
+          id: user.id,
+          name: user.full_name || user.email,
+          email: user.email,
+        }
+      }
+    }
+    return post
   } catch (error) {
     console.error('Unexpected error fetching blog post:', error)
+    return null
+  }
+}
+
+/**
+ * Get blog post by ID for admin preview (any status).
+ * Used by /blog/preview/[id] with admin auth check.
+ */
+export async function getBlogPostByIdForPreview(postId: string) {
+  try {
+    const { data, error } = await supabaseAdmin
+      .from('blog_posts')
+      .select(
+        `
+        *,
+        category:blog_categories(id, name, slug, description),
+        tags:blog_post_tags(
+          tag:blog_tags(id, name, slug)
+        )
+      `
+      )
+      .eq('id', postId)
+      .single()
+
+    if (error || !data) {
+      return null
+    }
+
+    const post = {
+      ...data,
+      tags: data.tags?.map((pt: any) => pt.tag) || [],
+    }
+    if (post.author_id) {
+      const { data: user } = await supabaseAdmin
+        .from('users')
+        .select('id, full_name, email')
+        .eq('id', post.author_id)
+        .single()
+      if (user) {
+        ;(post as any).author = {
+          id: user.id,
+          name: user.full_name || user.email,
+          email: user.email,
+        }
+      }
+    }
+    return post
+  } catch (error) {
+    console.error('Unexpected error fetching blog post for preview:', error)
     return null
   }
 }

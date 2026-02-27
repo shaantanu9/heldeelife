@@ -9,12 +9,25 @@ import { Button } from '@/components/ui/button'
 import {
   Card,
   CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
 } from '@/components/ui/card'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
-import { Plus, Edit, Trash2, Eye, Calendar, BarChart3 } from 'lucide-react'
+import {
+  Plus,
+  Edit,
+  Trash2,
+  Eye,
+  Calendar,
+  BarChart3,
+  ExternalLink,
+} from 'lucide-react'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -147,68 +160,131 @@ export default function AdminBlogPage() {
           </CardContent>
         </Card>
       ) : (
-        <div className="space-y-4">
-          {posts.map((post) => (
-            <Card key={post.id}>
-              <CardHeader>
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <CardTitle className="mb-2">{post.title}</CardTitle>
-                    <CardDescription className="flex items-center gap-4 flex-wrap">
-                      <span>Slug: {post.slug}</span>
-                      {post.published_at && (
+        <Card>
+          <CardContent className="p-0">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="min-w-[220px]">Title</TableHead>
+                  <TableHead className="w-[100px]">Status</TableHead>
+                  <TableHead className="w-[110px]">Date</TableHead>
+                  <TableHead className="w-[80px] text-center">
+                    Views
+                  </TableHead>
+                  <TableHead className="w-[90px] text-center">
+                    SEO
+                  </TableHead>
+                  <TableHead className="text-right min-w-[280px]">
+                    Actions
+                  </TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {posts.map((post) => (
+                  <TableRow key={post.id}>
+                    <TableCell>
+                      <Link
+                        href={`/admin/blog/${post.id}`}
+                        className="font-medium text-foreground hover:text-primary hover:underline"
+                      >
+                        {post.title}
+                      </Link>
+                      <p className="text-xs text-muted-foreground mt-0.5 truncate max-w-[280px]">
+                        /{post.slug}
+                      </p>
+                    </TableCell>
+                    <TableCell>
+                      <Badge
+                        variant={
+                          post.status === 'published'
+                            ? 'default'
+                            : 'secondary'
+                        }
+                      >
+                        {post.status}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-muted-foreground text-sm">
+                      {post.published_at ? (
                         <span className="flex items-center gap-1">
-                          <Calendar className="h-3 w-3" />
-                          {new Date(post.published_at).toLocaleDateString()}
+                          <Calendar className="h-3.5 w-3.5 shrink-0" />
+                          {new Date(
+                            post.published_at
+                          ).toLocaleDateString()}
+                        </span>
+                      ) : (
+                        <span className="flex items-center gap-1">
+                          <Calendar className="h-3.5 w-3.5 shrink-0" />
+                          {new Date(post.created_at).toLocaleDateString()}
                         </span>
                       )}
-                      <span>Views: {post.views_count}</span>
-                      <span>SEO Score: {post.seo_score}/100</span>
-                    </CardDescription>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Badge
-                      variant={
-                        post.status === 'published' ? 'default' : 'secondary'
-                      }
-                    >
-                      {post.status}
-                    </Badge>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="flex items-center gap-2">
-                  {post.status === 'published' && (
-                    <Link href={`/blog/${post.slug}`} target="_blank">
-                      <Button variant="outline" size="sm">
-                        <Eye className="h-4 w-4 mr-2" />
-                        View
-                      </Button>
-                    </Link>
-                  )}
-                  <Link href={`/admin/blog/${post.id}`}>
-                    <Button variant="outline" size="sm">
-                      <Edit className="h-4 w-4 mr-2" />
-                      Edit
-                    </Button>
-                  </Link>
-                  <Button
-                    variant="destructive"
-                    size="sm"
-                    onClick={() => {
-                      setPostToDelete(post.id)
-                      setDeleteDialogOpen(true)
-                    }}
-                  >
-                    <Trash2 className="h-4 w-4 mr-2" />
-                    Delete
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+                    </TableCell>
+                    <TableCell className="text-center text-sm text-muted-foreground">
+                      {post.views_count}
+                    </TableCell>
+                    <TableCell className="text-center">
+                      <span className="text-sm font-medium">
+                        {post.seo_score}/100
+                      </span>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex items-center justify-end gap-2 flex-wrap">
+                        <Link
+                          href={`/blog/preview/${post.id}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        >
+                          <Button
+                            variant="default"
+                            size="sm"
+                            className="gap-1.5"
+                          >
+                            <Eye className="h-4 w-4" />
+                            Preview
+                          </Button>
+                        </Link>
+                        <Link href={`/admin/blog/${post.id}`}>
+                          <Button variant="outline" size="sm" className="gap-1.5">
+                            <Edit className="h-4 w-4" />
+                            Edit
+                          </Button>
+                        </Link>
+                        {post.status === 'published' && (
+                          <Link
+                            href={`/blog/${post.slug}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                          >
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="gap-1.5"
+                            >
+                              <ExternalLink className="h-4 w-4" />
+                              View
+                            </Button>
+                          </Link>
+                        )}
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="gap-1.5 text-destructive hover:text-destructive hover:bg-destructive/10"
+                          onClick={() => {
+                            setPostToDelete(post.id)
+                            setDeleteDialogOpen(true)
+                          }}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                          Delete
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
       )}
 
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>

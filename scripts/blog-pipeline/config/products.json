@@ -1,0 +1,42 @@
+{
+  "brand_name": "HeldeeLife",
+  "brand_url": "https://www.heldeelife.com",
+  "products": [
+    {
+      "name": "Saline Tulsi Nasal Spray (115ml)",
+      "url": "https://www.heldeelife.com/shop",
+      "category": "nasal_care",
+      "short_name": "Tulsi Nasal Spray"
+    },
+    {
+      "name": "Vapor Patch",
+      "url": "https://www.heldeelife.com/shop",
+      "category": "cold_relief",
+      "short_name": "Vapor Patch"
+    },
+    {
+      "name": "Vapor Rub",
+      "url": "https://www.heldeelife.com/shop",
+      "category": "cold_relief",
+      "short_name": "Vapor Rub"
+    },
+    {
+      "name": "Immunity Booster Mix",
+      "url": "https://www.heldeelife.com/shop",
+      "category": "immunity",
+      "short_name": "Immunity Booster"
+    },
+    {
+      "name": "Hot Kadha Mix (Cough & Cold)",
+      "url": "https://www.heldeelife.com/shop",
+      "category": "cold_relief",
+      "short_name": "Kadha Mix"
+    },
+    {
+      "name": "Complete Cold Relief Pack",
+      "url": "https://www.heldeelife.com/shop",
+      "category": "cold_relief",
+      "short_name": "Cold Relief Pack"
+    }
+  ]
+}
