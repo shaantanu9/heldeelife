@@ -1,10 +1,39 @@
 'use client'
 
+import { useEffect } from 'react'
 import { ChevronDown, ArrowRight, Shield, Award, Users, Sparkles } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import Link from 'next/link'
+import type { HeroVariant } from '@/lib/ab-testing/variants'
+import { AnalyticsTracker } from '@/lib/analytics/tracking'
 
-export function HeroEnhanced() {
+interface HeroEnhancedProps {
+  variant?: HeroVariant
+}
+
+export function HeroEnhanced({ variant }: HeroEnhancedProps) {
+  const parts = variant?.headlineParts ?? {
+    before: 'Build a ',
+    highlight: 'healthy Life',
+    after: ' with Us',
+  }
+
+  useEffect(() => {
+    if (variant) {
+      AnalyticsTracker.trackEvent({
+        event: 'ab_variant_shown',
+        category: 'AB Testing',
+        action: 'Hero Variant Shown',
+        label: variant.id,
+        metadata: {
+          variant_id: variant.id,
+          headline: variant.headline,
+          psych_trigger: variant.psychTrigger,
+        },
+      })
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [variant?.id])
   return (
     <section className="relative min-h-screen bg-gradient-to-br from-slate-50 via-white to-orange-50/40 overflow-hidden">
       {/* Subtle Background Pattern */}
@@ -34,9 +63,9 @@ export function HeroEnhanced() {
                 AUTHENTIC AYURVEDA • MODERN MEDICINE
               </p>
               <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold text-gray-900 leading-[1.1] tracking-tight">
-                Build a{' '}
-                <span className="text-orange-600">healthy Life</span>{' '}
-                with Us
+                {parts.before}
+                <span className="text-orange-600">{parts.highlight}</span>
+                {parts.after}
               </h1>
               <p className="text-xl md:text-2xl text-gray-600 max-w-xl leading-relaxed font-light">
                 Experience the perfect blend of ancient Ayurvedic wisdom and

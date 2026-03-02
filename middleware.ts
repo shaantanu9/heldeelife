@@ -1,5 +1,6 @@
 import { withAuth } from 'next-auth/middleware'
 import { NextResponse } from 'next/server'
+import { AB_COOKIE_NAME, AB_COOKIE_MAX_AGE, pickRandomVariant } from '@/lib/ab-testing/select-variant'
 
 export default withAuth(
   function middleware(req) {
@@ -19,7 +20,22 @@ export default withAuth(
       }
     }
 
-    return NextResponse.next()
+    const response = NextResponse.next()
+
+    // Assign A/B test variant on first home page visit
+    if (path === '/') {
+      const existingVariant = req.cookies.get(AB_COOKIE_NAME)?.value
+      if (!existingVariant) {
+        response.cookies.set(AB_COOKIE_NAME, pickRandomVariant(), {
+          maxAge: AB_COOKIE_MAX_AGE,
+          path: '/',
+          sameSite: 'lax',
+          httpOnly: false, // readable client-side for analytics
+        })
+      }
+    }
+
+    return response
   },
   {
     callbacks: {
@@ -40,6 +56,7 @@ export default withAuth(
 
 export const config = {
   matcher: [
+    '/',
     '/admin/:path*',
     '/profile/:path*',
     '/cart/:path*',

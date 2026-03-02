@@ -4,6 +4,8 @@ import { DailyDeals } from '@/components/sections/daily-deals'
 import { Suspense } from 'react'
 import dynamic from 'next/dynamic'
 import type { Metadata } from 'next'
+import { cookies } from 'next/headers'
+import { AB_COOKIE_NAME, getVariantById } from '@/lib/ab-testing/select-variant'
 
 // Lazy load components for better initial load performance
 const HeroEnhanced = dynamic(
@@ -135,13 +137,19 @@ export const metadata: Metadata = {
     'Experience the perfect blend of ancient Ayurvedic wisdom and modern medicine. Authentic products, expert guidance, and personalized care for your complete well-being. Trusted by 50,000+ customers.',
 }
 
-export default function Home() {
+export default async function Home() {
+  const cookieStore = await cookies()
+  const variant = getVariantById(cookieStore.get(AB_COOKIE_NAME)?.value)
+
+  // Server-side impression log for A/B test analytics
+  console.log(`[AB Test] hero_variant=${variant.id} trigger=${variant.psychTrigger}`)
+
   return (
     <div className="min-h-screen">
       {/* AIDA Framework Applied: Attention, Interest, Desire, Action */}
-      
+
       {/* 1. HERO - Attention & Interest (AIDA: A, I) */}
-      <HeroEnhanced />
+      <HeroEnhanced variant={variant} />
       
       {/* 2. TRUST SIGNALS - Build Credibility Immediately */}
       <TrustSignals />
