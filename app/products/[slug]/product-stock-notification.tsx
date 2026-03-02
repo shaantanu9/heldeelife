@@ -40,19 +40,21 @@ export function ProductStockNotification({
     setIsSubmitting(true)
 
     try {
-      // TODO: Implement API endpoint for stock notifications
-      // const response = await fetch("/api/products/stock-notifications", {
-      //   method: "POST",
-      //   headers: { "Content-Type": "application/json" },
-      //   body: JSON.stringify({
-      //     product_id: productId,
-      //     email,
-      //     phone,
-      //   }),
-      // })
+      const response = await fetch('/api/products/stock-alerts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          productId,
+          productName,
+          email: email.trim() || undefined,
+          phone: phone.trim() || undefined,
+        }),
+      })
 
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1000))
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}))
+        throw new Error(data.error || 'Failed to subscribe')
+      }
 
       toast.success(
         'You&apos;ll be notified when this product is back in stock!'

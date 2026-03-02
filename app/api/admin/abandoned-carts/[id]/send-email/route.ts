@@ -52,8 +52,8 @@ export async function POST(
       console.error('Error updating recovery attempts:', updateError)
     }
 
-    // TODO: Send actual recovery email here
-    // For now, just log it
+    // Email sending deferred: no email provider integrated yet.
+    // Route updates recovery_attempts and returns success; integrate SendGrid/Resend when ready.
     console.log('Recovery email would be sent to:', cart.email, {
       cartId: id,
       totalAmount: cart.total_amount,
