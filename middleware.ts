@@ -31,6 +31,7 @@ export default withAuth(
           path: '/',
           sameSite: 'lax',
           httpOnly: false, // readable client-side for analytics
+          secure: process.env.NODE_ENV === 'production',
         })
       }
     }

@@ -37,11 +37,11 @@ export const HERO_VARIANTS: Record<VariantId, HeroVariant> = {
   /** Urgency — scarcity + time pressure trigger */
   urgency: {
     id: 'urgency',
-    headline: 'Start Your Wellness Journey Today — Limited Consultations Available',
+    headline: 'Start Your Wellness Journey Today — Limited Stock Available',
     headlineParts: {
       before: 'Start Your Wellness Journey ',
       highlight: 'Today',
-      after: ' — Limited Consultations Available',
+      after: ' — Limited Stock Available',
     },
     psychTrigger: 'urgency',
   },
@@ -65,7 +65,7 @@ export const HERO_VARIANTS: Record<VariantId, HeroVariant> = {
     headlineParts: {
       before: 'Feel Better in ',
       highlight: '30 Days',
-      after: ' — Guaranteed',
+      after: ' — Guaranteed with Authentic Ayurveda',
     },
     psychTrigger: 'benefit-framing',
   },
