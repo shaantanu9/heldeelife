@@ -186,6 +186,20 @@ export async function POST(
       )
     }
 
+    // CAN-SPAM: skip send if email is opted out
+    const { data: optOut } = await supabaseAdmin
+      .from('email_unsubscribes')
+      .select('email')
+      .eq('email', cart.email)
+      .maybeSingle()
+
+    if (optOut) {
+      return NextResponse.json(
+        { success: true, message: 'Email skipped — recipient has unsubscribed', skipped: true },
+        { status: 200 }
+      )
+    }
+
     // Send recovery email via Resend
     const from =
       process.env.RESEND_FROM_EMAIL || 'noreply@heldeelife.com'
