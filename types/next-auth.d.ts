@@ -29,5 +29,6 @@ declare module 'next-auth/jwt' {
     name?: string | null
     phoneNumber?: string | null
     role?: 'user' | 'admin'
+    roleRefreshedAt?: number
   }
 }
