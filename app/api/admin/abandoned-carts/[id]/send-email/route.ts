@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth'
 import { Resend } from 'resend'
 import { authOptions } from '@/lib/auth-options'
 import { supabaseAdmin } from '@/lib/supabase/server'
+import { rateLimit, getRateLimitIdentifier } from '@/lib/rate-limit'
 
 const resend = new Resend(process.env.RESEND_API_KEY)
 
@@ -156,6 +157,16 @@ export async function POST(
 
     if (session.user.role !== 'admin') {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    }
+
+    // Rate limit: 20 recovery emails per minute per admin (email sending is expensive)
+    const ip = getRateLimitIdentifier(request)
+    const rateLimitResult = await rateLimit(`admin-send-email:${session.user.id || ip}`, 20, 60)
+    if (!rateLimitResult.success) {
+      return NextResponse.json(
+        { error: 'Too many email requests. Please try again later.' },
+        { status: 429 }
+      )
     }
 
     const { id } = await params

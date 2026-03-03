@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth-options'
 import { supabaseAdmin } from '@/lib/supabase/server'
+import { rateLimit, getRateLimitIdentifier } from '@/lib/rate-limit'
 
 // POST /api/admin/loyalty/points/[userId]/adjust - Adjust loyalty points (admin only)
 export async function POST(
@@ -17,6 +18,16 @@ export async function POST(
 
     if (session.user.role !== 'admin') {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    }
+
+    // Rate limit: 30 point adjustments per minute per admin
+    const ip = getRateLimitIdentifier(request)
+    const rateLimitResult = await rateLimit(`admin-loyalty-adjust:${session.user.id || ip}`, 30, 60)
+    if (!rateLimitResult.success) {
+      return NextResponse.json(
+        { error: 'Too many requests. Please try again later.' },
+        { status: 429 }
+      )
     }
 
     const { userId } = await params
