@@ -22,11 +22,11 @@ export async function POST(request: NextRequest) {
       authorized = true
     } else {
       const session = await getServerSession(authOptions)
-      authorized = !!session?.user?.id
+      authorized = session?.user?.role === 'admin'
     }
 
     if (!authorized) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
     const body = await request.json()
