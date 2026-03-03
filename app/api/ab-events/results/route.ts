@@ -11,20 +11,19 @@ export async function GET() {
   }
 
   try {
-    const { data, error } = await supabaseAdmin
-      .from('ab_experiment_events')
-      .select('variant_id, event_type')
+    // SQL GROUP BY aggregation via stored function (avoids fetching all rows into JS)
+    const { data, error } = await supabaseAdmin.rpc('get_ab_event_counts')
 
     if (error) {
       console.error('Error fetching ab events:', error)
       return NextResponse.json({ error: 'Database error' }, { status: 500 })
     }
 
-    // Aggregate counts grouped by variant_id and event_type
+    // Transform flat rows into nested { variant_id: { event_type: count } }
     const results: Record<string, Record<string, number>> = {}
     for (const row of data || []) {
       if (!results[row.variant_id]) results[row.variant_id] = {}
-      results[row.variant_id][row.event_type] = (results[row.variant_id][row.event_type] || 0) + 1
+      results[row.variant_id][row.event_type] = Number(row.count)
     }
 
     return NextResponse.json({ results })

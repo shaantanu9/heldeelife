@@ -18,6 +18,22 @@ export function HeroEnhanced({ variant }: HeroEnhancedProps) {
     after: ' with Us',
   }
 
+  const variantId = variant?.id === 'social-proof' ? 'social' : variant?.id
+
+  const trackCtaClick = () => {
+    if (!variantId) return
+    const sessionId = localStorage.getItem('ab_session_id')
+    fetch('/api/ab-events', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        variant_id: variantId,
+        event_type: 'cta_clicked',
+        session_id: sessionId,
+      }),
+    }).catch(() => {})
+  }
+
   useEffect(() => {
     if (variant) {
       AnalyticsTracker.trackEvent({
@@ -34,7 +50,6 @@ export function HeroEnhanced({ variant }: HeroEnhancedProps) {
 
       // Fire-and-forget: persist variant_shown event to Supabase
       // Map 'social-proof' -> 'social' to match DB enum constraint
-      const variantId = variant.id === 'social-proof' ? 'social' : variant.id
       let sessionId = localStorage.getItem('ab_session_id')
       if (!sessionId) {
         sessionId = crypto.randomUUID()
@@ -142,7 +157,7 @@ export function HeroEnhanced({ variant }: HeroEnhancedProps) {
                 size="lg"
                 className="bg-orange-600 hover:bg-orange-700 text-white shadow-lg hover:shadow-xl transition-all text-base px-8 py-6 h-auto"
               >
-                <Link href="/shop">
+                <Link href="/shop" onClick={trackCtaClick}>
                   Shop Authentic Products
                   <ArrowRight className="ml-2 h-5 w-5" />
                 </Link>
@@ -153,7 +168,7 @@ export function HeroEnhanced({ variant }: HeroEnhancedProps) {
                 size="lg"
                 className="border-2 border-gray-300 hover:border-orange-500 text-gray-700 hover:text-orange-600 text-base px-8 py-6 h-auto"
               >
-                <Link href="/about">Learn Our Story</Link>
+                <Link href="/about" onClick={trackCtaClick}>Learn Our Story</Link>
               </Button>
             </div>
 
