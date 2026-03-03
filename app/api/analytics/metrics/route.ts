@@ -7,8 +7,9 @@ export async function GET(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
 
-    // Allow both authenticated users and admins
-    // Admins get all metrics, users get their own metrics
+    if (!session || session.user?.role !== 'admin') {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    }
 
     const { searchParams } = new URL(request.url)
     const startDate = searchParams.get('start_date')

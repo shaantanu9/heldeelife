@@ -1,11 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/lib/auth-options'
 import { ImageKitService } from '@/lib/imagekit-service'
 
 /**
  * Test ImageKit connection and configuration
  * GET /api/images/test
+ * Admin only — debug endpoint
  */
 export async function GET(request: NextRequest) {
+  const session = await getServerSession(authOptions)
+  if (!session || session.user?.role !== 'admin') {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  }
+
   try {
     // Check environment variables
     const publicKey = process.env.IMAGEKIT_PUBLIC_KEY
