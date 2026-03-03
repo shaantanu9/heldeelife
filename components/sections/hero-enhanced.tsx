@@ -31,6 +31,24 @@ export function HeroEnhanced({ variant }: HeroEnhancedProps) {
           psych_trigger: variant.psychTrigger,
         },
       })
+
+      // Fire-and-forget: persist variant_shown event to Supabase
+      // Map 'social-proof' -> 'social' to match DB enum constraint
+      const variantId = variant.id === 'social-proof' ? 'social' : variant.id
+      let sessionId = localStorage.getItem('ab_session_id')
+      if (!sessionId) {
+        sessionId = crypto.randomUUID()
+        localStorage.setItem('ab_session_id', sessionId)
+      }
+      fetch('/api/ab-events', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          variant_id: variantId,
+          event_type: 'variant_shown',
+          session_id: sessionId,
+        }),
+      }).catch(() => {})
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [variant?.id])
