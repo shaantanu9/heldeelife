@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth-options'
 import { supabaseAdmin } from '@/lib/supabase/server'
+import { rateLimit, getRateLimitIdentifier } from '@/lib/rate-limit'
 
 export async function GET(request: NextRequest) {
   try {
@@ -9,6 +10,16 @@ export async function GET(request: NextRequest) {
 
     if (!session || session.user?.role !== 'admin') {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    }
+
+    // Rate limit: 10 analytics metrics requests per minute per admin user
+    const ip = getRateLimitIdentifier(request)
+    const rateLimitResult = await rateLimit(`analytics-metrics:${session?.user?.id || ip}`, 10, 60)
+    if (!rateLimitResult.success) {
+      return NextResponse.json(
+        { error: 'Too many requests. Please try again later.' },
+        { status: 429 }
+      )
     }
 
     const { searchParams } = new URL(request.url)

@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth-options'
 import { supabaseAdmin } from '@/lib/supabase/server'
 import { normalizePhoneNumber } from '@/lib/auth-utils'
+import { rateLimit, getRateLimitIdentifier } from '@/lib/rate-limit'
 
 export async function PUT(request: NextRequest) {
   try {
@@ -10,6 +11,16 @@ export async function PUT(request: NextRequest) {
 
     if (!session?.user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    // Rate limit: 10 profile updates per minute per user
+    const ip = getRateLimitIdentifier(request)
+    const rateLimitResult = await rateLimit(`update-profile:${session?.user?.id || ip}`, 10, 60)
+    if (!rateLimitResult.success) {
+      return NextResponse.json(
+        { error: 'Too many update attempts. Please try again later.' },
+        { status: 429 }
+      )
     }
 
     const body = await request.json()

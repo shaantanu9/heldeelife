@@ -1,8 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase/server'
+import { rateLimit, getRateLimitIdentifier } from '@/lib/rate-limit'
 
 export async function POST(request: NextRequest) {
   try {
+    // Rate limit: 5 reset-password attempts per 10 minutes per IP
+    const ip = getRateLimitIdentifier(request)
+    const rateLimitResult = await rateLimit(`reset-password:${ip}`, 5, 600)
+    if (!rateLimitResult.success) {
+      return NextResponse.json(
+        { error: 'Too many password reset attempts. Please try again later.' },
+        { status: 429 }
+      )
+    }
+
     const { accessToken, password, attemptId } = await request.json()
 
     if (!accessToken) {
