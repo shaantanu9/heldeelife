@@ -7,7 +7,9 @@ interface UnsubscribePageProps {
 export default async function UnsubscribePage({ searchParams }: UnsubscribePageProps) {
   const { email } = await searchParams
 
-  if (!email) {
+  const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+
+  if (!email || !EMAIL_RE.test(email)) {
     return (
       <main style={{ fontFamily: 'Arial, sans-serif', maxWidth: 480, margin: '80px auto', padding: '0 24px', textAlign: 'center' }}>
         <h1 style={{ fontSize: 24, color: '#1a1a2e', marginBottom: 12 }}>Unsubscribe</h1>
