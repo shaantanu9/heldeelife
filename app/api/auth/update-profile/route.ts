@@ -19,7 +19,7 @@ export async function PUT(request: NextRequest) {
     if (!rateLimitResult.success) {
       return NextResponse.json(
         { error: 'Too many update attempts. Please try again later.' },
-        { status: 429 }
+        { status: 429, headers: { 'Retry-After': String(Math.ceil((rateLimitResult.reset - Date.now()) / 1000)) } }
       )
     }
 

@@ -165,7 +165,7 @@ export async function POST(
     if (!rateLimitResult.success) {
       return NextResponse.json(
         { error: 'Too many email requests. Please try again later.' },
-        { status: 429 }
+        { status: 429, headers: { 'Retry-After': String(Math.ceil((rateLimitResult.reset - Date.now()) / 1000)) } }
       )
     }
 

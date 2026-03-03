@@ -14,7 +14,7 @@ async function POST(req: NextRequest, context: any) {
     if (!rateLimitResult.success) {
       return NextResponse.json(
         { error: 'Too many sign-in attempts. Please try again later.' },
-        { status: 429 }
+        { status: 429, headers: { 'Retry-After': String(Math.ceil((rateLimitResult.reset - Date.now()) / 1000)) } }
       )
     }
   }
