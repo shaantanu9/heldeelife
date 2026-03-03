@@ -19,12 +19,12 @@ export async function GET() {
       return NextResponse.json({ error: 'Database error' }, { status: 500 })
     }
 
-    // Transform flat rows into nested { variant_id: { event_type: count } }
-    const results: Record<string, Record<string, number>> = {}
-    for (const row of data || []) {
-      if (!results[row.variant_id]) results[row.variant_id] = {}
-      results[row.variant_id][row.event_type] = Number(row.count)
-    }
+    // Return flat array: [{ variant_id, event_type, count }]
+    const results = (data || []).map((row: { variant_id: string; event_type: string; count: number | string }) => ({
+      variant_id: row.variant_id,
+      event_type: row.event_type,
+      count: Number(row.count),
+    }))
 
     return NextResponse.json({ results })
   } catch {

@@ -25,8 +25,15 @@ export function AbTestingClient() {
           setError(data.error)
           return
         }
-        const results: Record<string, Record<string, number>> = data.results || {}
-        const parsed: VariantRow[] = Object.entries(results).map(([variant, events]) => {
+        const rawResults: Array<{ variant_id: string; event_type: string; count: number }> =
+          data.results || []
+        // Group flat rows into { variant -> { event_type -> count } }
+        const grouped: Record<string, Record<string, number>> = {}
+        for (const row of rawResults) {
+          if (!grouped[row.variant_id]) grouped[row.variant_id] = {}
+          grouped[row.variant_id][row.event_type] = row.count
+        }
+        const parsed: VariantRow[] = Object.entries(grouped).map(([variant, events]) => {
           const impressions = events['variant_shown'] ?? 0
           const ctaClicks = events['cta_clicked'] ?? 0
           const ctr = impressions > 0 ? (ctaClicks / impressions) * 100 : 0
