@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth-options'
 import { supabaseAdmin } from '@/lib/supabase/server'
+import { rateLimit, getRateLimitIdentifier } from '@/lib/rate-limit'
 import { BlogPost, CreateBlogPostInput } from '@/lib/types/blog'
 import {
   calculateReadingTime,
@@ -17,6 +18,7 @@ export const dynamic = 'force-dynamic'
 export async function GET(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
+    const isAdmin = session?.user?.role === 'admin'
     const searchParams = request.nextUrl.searchParams
     const status = searchParams.get('status')
     const category = searchParams.get('category')
@@ -32,8 +34,8 @@ export async function GET(request: NextRequest) {
         )
       `)
 
-    // If not authenticated, only show published posts
-    if (!session) {
+    // If not authenticated or not admin, only show published posts
+    if (!session || !isAdmin) {
       query = query
         .eq('status', 'published')
         .order('published_at', { ascending: false, nullsFirst: false })
@@ -110,6 +112,14 @@ export async function POST(request: NextRequest) {
         { error: 'Forbidden: Admin access required' },
         { status: 403 }
       )
+    }
+
+    const rateLimitResult = await rateLimit(getRateLimitIdentifier(request), 20, 60)
+    if (!rateLimitResult.success) {
+      return NextResponse.json({ error: 'Too many requests' }, {
+        status: 429,
+        headers: { 'Retry-After': String(Math.ceil((rateLimitResult.reset - Date.now()) / 1000)) }
+      })
     }
 
     const body: CreateBlogPostInput = await request.json()

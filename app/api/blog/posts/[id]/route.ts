@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth-options'
 import { supabaseAdmin } from '@/lib/supabase/server'
+import { rateLimit, getRateLimitIdentifier } from '@/lib/rate-limit'
 import { UpdateBlogPostInput } from '@/lib/types/blog'
 import {
   calculateReadingTime,
@@ -17,6 +18,7 @@ export async function GET(
 ) {
   try {
     const session = await getServerSession(authOptions)
+    const isAdmin = session?.user?.role === 'admin'
     const { id } = await params
 
     let query = supabaseAdmin
@@ -32,8 +34,8 @@ export async function GET(
       )
       .eq('id', id)
 
-    // If not authenticated, only show published posts
-    if (!session) {
+    // If not authenticated or not admin, only show published posts
+    if (!session || !isAdmin) {
       query = query.eq('status', 'published')
     }
 
@@ -88,6 +90,14 @@ export async function PUT(
         { error: 'Forbidden: Admin access required' },
         { status: 403 }
       )
+    }
+
+    const rateLimitResult = await rateLimit(getRateLimitIdentifier(request), 20, 60)
+    if (!rateLimitResult.success) {
+      return NextResponse.json({ error: 'Too many requests' }, {
+        status: 429,
+        headers: { 'Retry-After': String(Math.ceil((rateLimitResult.reset - Date.now()) / 1000)) }
+      })
     }
 
     const { id } = await params
@@ -244,6 +254,14 @@ export async function DELETE(
         { error: 'Forbidden: Admin access required' },
         { status: 403 }
       )
+    }
+
+    const rateLimitResult = await rateLimit(getRateLimitIdentifier(request), 20, 60)
+    if (!rateLimitResult.success) {
+      return NextResponse.json({ error: 'Too many requests' }, {
+        status: 429,
+        headers: { 'Retry-After': String(Math.ceil((rateLimitResult.reset - Date.now()) / 1000)) }
+      })
     }
 
     const { id } = await params
