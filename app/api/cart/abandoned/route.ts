@@ -4,6 +4,9 @@ import { authOptions } from '@/lib/auth-options'
 import { supabaseAdmin } from '@/lib/supabase/server'
 import { rateLimit, getRateLimitIdentifier } from '@/lib/rate-limit'
 import { VALIDATION } from '@/lib/constants'
+import { Resend } from 'resend'
+
+const resend = new Resend(process.env.RESEND_API_KEY)
 
 export async function POST(request: NextRequest) {
   try {
@@ -71,13 +74,19 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // In production, trigger email sending service here
-    // For now, we'll just log it
-    console.log('Abandoned cart saved:', {
-      cartId: data.id,
-      email,
-      totalPrice: cart.totalPrice,
-    })
+    // Trigger re-engagement email (non-blocking: email failure does not roll back the DB insert)
+    try {
+      const from = process.env.RESEND_FROM_EMAIL || 'noreply@heldeelife.com'
+      const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://heldeelife.com'
+      await resend.emails.send({
+        from,
+        to: email,
+        subject: 'You left something behind... 🛒',
+        html: `<p>You left ${itemCount} item(s) in your cart. <a href="${siteUrl}/cart">Complete your order</a>.</p>`,
+      })
+    } catch (emailErr) {
+      console.error('Failed to send abandoned cart email for cart', data.id, ':', emailErr)
+    }
 
     return NextResponse.json({
       success: true,
