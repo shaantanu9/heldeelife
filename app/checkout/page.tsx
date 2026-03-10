@@ -517,15 +517,19 @@ export default function CheckoutPage() {
 
           const paymentData = await paymentResponse.json()
 
+          if (!paymentData.success || !paymentData.data) {
+            throw new Error(paymentData.error?.message || 'Failed to create payment order')
+          }
+
           // Initialize Razorpay
           if (typeof window !== 'undefined' && (window as any).Razorpay) {
             const options = {
               key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
-              amount: paymentData.amount,
-              currency: paymentData.currency,
+              amount: paymentData.data.amount,
+              currency: paymentData.data.currency,
               name: 'heldeelife',
               description: `Order #${orderNumber}`,
-              order_id: paymentData.razorpay_order_id,
+              order_id: paymentData.data.razorpay_order_id,
               handler: async function (response: any) {
                 try {
                   // Verify payment
