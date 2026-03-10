@@ -149,7 +149,29 @@ export const authOptions: NextAuthOptions = {
         token.name = user.name
         token.phoneNumber = (user as any).phoneNumber
         token.role = (user as any).role || 'user'
+        token.roleRefreshedAt = Date.now()
       }
+
+      // Re-fetch role from DB every 5 minutes to prevent stale admin tokens
+      const ROLE_REFRESH_INTERVAL = 5 * 60 * 1000
+      const lastRefresh = token.roleRefreshedAt ?? 0
+      if (token.id && Date.now() - lastRefresh > ROLE_REFRESH_INTERVAL) {
+        try {
+          const { data: userProfile } = await supabaseAdmin
+            .from('users')
+            .select('role')
+            .eq('id', token.id)
+            .single()
+
+          if (userProfile) {
+            token.role = (userProfile.role as 'user' | 'admin') || 'user'
+          }
+          token.roleRefreshedAt = Date.now()
+        } catch (error) {
+          console.error('Failed to refresh user role from DB:', error)
+        }
+      }
+
       return token
     },
     async session({ session, token }) {

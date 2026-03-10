@@ -1,10 +1,72 @@
 'use client'
 
+import { useEffect } from 'react'
 import { ChevronDown, ArrowRight, Shield, Award, Users, Sparkles } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import Link from 'next/link'
+import type { HeroVariant } from '@/lib/ab-testing/variants'
+import { AnalyticsTracker } from '@/lib/analytics/tracking'
 
-export function HeroEnhanced() {
+interface HeroEnhancedProps {
+  variant?: HeroVariant
+}
+
+export function HeroEnhanced({ variant }: HeroEnhancedProps) {
+  const parts = variant?.headlineParts ?? {
+    before: 'Build a ',
+    highlight: 'healthy Life',
+    after: ' with Us',
+  }
+
+  const variantId = variant?.id === 'social-proof' ? 'social' : variant?.id
+
+  const trackCtaClick = () => {
+    if (!variantId) return
+    const sessionId = localStorage.getItem('ab_session_id')
+    fetch('/api/ab-events', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        variant_id: variantId,
+        event_type: 'cta_clicked',
+        session_id: sessionId,
+      }),
+    }).catch(() => {})
+  }
+
+  useEffect(() => {
+    if (variant) {
+      AnalyticsTracker.trackEvent({
+        event: 'ab_variant_shown',
+        category: 'AB Testing',
+        action: 'Hero Variant Shown',
+        label: variant.id,
+        metadata: {
+          variant_id: variant.id,
+          headline: variant.headline,
+          psych_trigger: variant.psychTrigger,
+        },
+      })
+
+      // Fire-and-forget: persist variant_shown event to Supabase
+      // Map 'social-proof' -> 'social' to match DB enum constraint
+      let sessionId = localStorage.getItem('ab_session_id')
+      if (!sessionId) {
+        sessionId = crypto.randomUUID()
+        localStorage.setItem('ab_session_id', sessionId)
+      }
+      fetch('/api/ab-events', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          variant_id: variantId,
+          event_type: 'variant_shown',
+          session_id: sessionId,
+        }),
+      }).catch(() => {})
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [variant?.id])
   return (
     <section className="relative min-h-screen bg-gradient-to-br from-slate-50 via-white to-orange-50/40 overflow-hidden">
       {/* Subtle Background Pattern */}
@@ -34,9 +96,9 @@ export function HeroEnhanced() {
                 AUTHENTIC AYURVEDA • MODERN MEDICINE
               </p>
               <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold text-gray-900 leading-[1.1] tracking-tight">
-                Build a{' '}
-                <span className="text-orange-600">healthy Life</span>{' '}
-                with Us
+                {parts.before}
+                <span className="text-orange-600">{parts.highlight}</span>
+                {parts.after}
               </h1>
               <p className="text-xl md:text-2xl text-gray-600 max-w-xl leading-relaxed font-light">
                 Experience the perfect blend of ancient Ayurvedic wisdom and
@@ -95,7 +157,7 @@ export function HeroEnhanced() {
                 size="lg"
                 className="bg-orange-600 hover:bg-orange-700 text-white shadow-lg hover:shadow-xl transition-all text-base px-8 py-6 h-auto"
               >
-                <Link href="/shop">
+                <Link href="/shop" onClick={trackCtaClick}>
                   Shop Authentic Products
                   <ArrowRight className="ml-2 h-5 w-5" />
                 </Link>
@@ -106,7 +168,7 @@ export function HeroEnhanced() {
                 size="lg"
                 className="border-2 border-gray-300 hover:border-orange-500 text-gray-700 hover:text-orange-600 text-base px-8 py-6 h-auto"
               >
-                <Link href="/about">Learn Our Story</Link>
+                <Link href="/about" onClick={trackCtaClick}>Learn Our Story</Link>
               </Button>
             </div>
 

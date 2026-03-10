@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth-options'
 import { supabaseAdmin } from '@/lib/supabase/server'
 import * as XLSX from 'xlsx'
+import { rateLimit, getRateLimitIdentifier } from '@/lib/rate-limit'
 
 export const dynamic = 'force-dynamic'
 
@@ -36,6 +37,16 @@ export async function POST(request: NextRequest) {
 
     if (!session?.user || session.user.role !== 'admin') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    // Rate limit: 5 bulk imports per 5 minutes per admin (resource intensive)
+    const ip = getRateLimitIdentifier(request)
+    const rateLimitResult = await rateLimit(`admin-bulk-import:${session.user.id || ip}`, 5, 300)
+    if (!rateLimitResult.success) {
+      return NextResponse.json(
+        { error: 'Too many bulk import requests. Please try again later.' },
+        { status: 429, headers: { 'Retry-After': String(Math.ceil((rateLimitResult.reset - Date.now()) / 1000)) } }
+      )
     }
 
     const formData = await request.formData()

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth-options'
 import { supabaseAdmin } from '@/lib/supabase/server'
+import { rateLimit, getRateLimitIdentifier } from '@/lib/rate-limit'
 
 export const dynamic = 'force-dynamic'
 
@@ -11,6 +12,16 @@ export async function POST(request: NextRequest) {
 
     if (!session?.user || session.user.role !== 'admin') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    // Rate limit: 20 bulk operations per minute per admin
+    const ip = getRateLimitIdentifier(request)
+    const rateLimitResult = await rateLimit(`admin-bulk-ops:${session.user.id || ip}`, 20, 60)
+    if (!rateLimitResult.success) {
+      return NextResponse.json(
+        { error: 'Too many requests. Please try again later.' },
+        { status: 429, headers: { 'Retry-After': String(Math.ceil((rateLimitResult.reset - Date.now()) / 1000)) } }
+      )
     }
 
     const body = await request.json()
