@@ -19,6 +19,9 @@ import { ScrollToTop } from '@/components/mobile/scroll-to-top'
 import MobileOptimizations from '@/components/mobile/mobile-optimizations'
 import { StickyCartButton } from '@/components/mobile/sticky-cart-button'
 import { GoogleAnalytics } from '@/components/analytics/google-analytics'
+import { SITE, VERIFICATION } from '@/lib/seo/site'
+import { JsonLd } from '@/lib/seo/json-ld'
+import { organizationSchema, websiteSchema } from '@/lib/seo/schema'
 
 // Optimize font loading with display swap and preload
 const inter = Inter({
@@ -41,51 +44,54 @@ const playfair = Playfair_Display({
 })
 
 export const metadata: Metadata = {
-  metadataBase: new URL(
-    process.env.NEXT_PUBLIC_SITE_URL || 'https://heldeelife.com'
-  ),
+  metadataBase: new URL(SITE.url),
   title: {
-    default: 'heldeelife - Ayurveda and Modern Medicine',
-    template: '%s | heldeelife',
+    default: `${SITE.name} — ${SITE.tagline} | Holistic Wellness`,
+    template: `%s | ${SITE.name}`,
   },
-  description:
-    'Holistic approach to health and wellness through Ayurveda, combining traditional wisdom with modern medicine',
-  keywords: [
-    'ayurveda',
-    'health',
-    'wellness',
-    'medicine',
-    'holistic health',
-    'natural remedies',
-    'ayurvedic products',
-    'wellness products',
-  ],
-  authors: [{ name: 'heldeelife' }],
-  creator: 'heldeelife',
-  publisher: 'heldeelife',
+  description: SITE.description,
+  applicationName: SITE.name,
+  keywords: [...SITE.keywords],
+  authors: [{ name: SITE.name, url: SITE.url }],
+  creator: SITE.name,
+  publisher: SITE.name,
+  category: 'health',
+  manifest: '/manifest.json',
+  icons: {
+    icon: [
+      { url: '/favicon.ico', sizes: 'any' },
+      { url: '/icon-192.png', type: 'image/png', sizes: '192x192' },
+      { url: '/icon-512.png', type: 'image/png', sizes: '512x512' },
+    ],
+    apple: [{ url: '/apple-touch-icon.png', sizes: '180x180' }],
+  },
+  appleWebApp: {
+    capable: true,
+    title: SITE.name,
+    statusBarStyle: 'default',
+  },
+  formatDetection: { telephone: false },
   openGraph: {
     type: 'website',
-    locale: 'en_US',
-    url: process.env.NEXT_PUBLIC_SITE_URL || 'https://heldeelife.com',
-    siteName: 'heldeelife',
-    title: 'heldeelife - Ayurveda and Modern Medicine',
-    description: 'Holistic approach to health and wellness through Ayurveda',
+    locale: SITE.locale,
+    url: '/',
+    siteName: SITE.name,
+    title: `${SITE.name} — ${SITE.tagline}`,
+    description: SITE.description,
     images: [
       {
-        url: `${process.env.NEXT_PUBLIC_SITE_URL || 'https://heldeelife.com'}/og-image.jpg`,
+        url: SITE.ogImage,
         width: 1200,
         height: 630,
-        alt: 'heldeelife - Ayurveda and Modern Medicine',
+        alt: `${SITE.name} — ${SITE.tagline}`,
       },
     ],
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'heldeelife - Ayurveda and Modern Medicine',
-    description: 'Holistic approach to health and wellness through Ayurveda',
-    images: [
-      `${process.env.NEXT_PUBLIC_SITE_URL || 'https://heldeelife.com'}/og-image.jpg`,
-    ],
+    title: `${SITE.name} — ${SITE.tagline}`,
+    description: SITE.description,
+    images: [SITE.ogImage],
   },
   robots: {
     index: true,
@@ -98,21 +104,26 @@ export const metadata: Metadata = {
       'max-snippet': -1,
     },
   },
+  // No site-wide canonical here: it would be inherited by every page that
+  // doesn't set its own (incl. 404s), pointing them all at the homepage.
   alternates: {
-    canonical: '/',
     types: {
       'application/rss+xml': [
-        { url: '/rss.xml', title: 'heldeelife Blog RSS Feed' },
+        { url: '/rss.xml', title: `${SITE.name} Blog RSS Feed` },
       ],
     },
   },
-  // Additional LLM-friendly metadata
-  category: 'Health & Wellness',
-  classification: 'E-commerce, Health, Ayurveda',
+  verification: {
+    google: VERIFICATION.google,
+    yandex: VERIFICATION.yandex,
+    ...(VERIFICATION.bing && { other: { 'msvalidate.01': VERIFICATION.bing } }),
+  },
   other: {
-    'application-name': 'heldeelife',
-    'apple-mobile-web-app-title': 'heldeelife',
-    'format-detection': 'telephone=no',
+    // Local / geo signals (India)
+    'geo.region': `IN-MH`,
+    'geo.placename': SITE.address.addressLocality,
+    'geo.position': `${SITE.geo.latitude};${SITE.geo.longitude}`,
+    ICBM: `${SITE.geo.latitude}, ${SITE.geo.longitude}`,
   },
 }
 
@@ -121,7 +132,7 @@ export const viewport: Viewport = {
   initialScale: 1,
   maximumScale: 5,
   userScalable: true,
-  themeColor: '#FF6B35',
+  themeColor: SITE.themeColor,
   viewportFit: 'cover', // For iOS safe area
 }
 
@@ -130,107 +141,17 @@ export default function RootLayout({
 }: {
   children: React.ReactNode
 }) {
-  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://heldeelife.com'
-
-  // Organization structured data for the entire site
-  const organizationStructuredData = {
-    '@context': 'https://schema.org',
-    '@type': 'Organization',
-    name: 'heldeelife',
-    url: baseUrl,
-    logo: `${baseUrl}/logo.png`,
-    description:
-      'Holistic approach to health and wellness through Ayurveda and modern medicine',
-    sameAs: [
-      // Add your social media links here when available
-    ],
-    contactPoint: {
-      '@type': 'ContactPoint',
-      contactType: 'Customer Service',
-      availableLanguage: ['English', 'Hindi'],
-    },
-    areaServed: {
-      '@type': 'Country',
-      name: 'India',
-    },
-  }
-
-  // WebSite structured data with search action
-  const websiteStructuredData = {
-    '@context': 'https://schema.org',
-    '@type': 'WebSite',
-    name: 'heldeelife',
-    url: baseUrl,
-    potentialAction: {
-      '@type': 'SearchAction',
-      target: {
-        '@type': 'EntryPoint',
-        urlTemplate: `${baseUrl}/search?q={search_term_string}`,
-      },
-      'query-input': 'required name=search_term_string',
-    },
-  }
-
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang={SITE.language} suppressHydrationWarning>
       <head>
-        {/* Organization structured data */}
-        <script
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{
-            __html: JSON.stringify(organizationStructuredData),
-          }}
-        />
-        {/* WebSite structured data with search */}
-        <script
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{
-            __html: JSON.stringify(websiteStructuredData),
-          }}
-        />
-
-        {/* PWA Manifest */}
-        <link rel="manifest" href="/manifest.json" />
-
-        {/* Resource Hints - Optimize loading */}
-        {/* Note: Google Fonts preconnect is handled automatically by next/font/google */}
+        {/* Site-wide entity graph: Organization/OnlineStore + WebSite */}
+        <JsonLd data={[organizationSchema(), websiteSchema()]} />
         <link rel="dns-prefetch" href="https://ik.imagekit.io" />
-
-        {/* PWA Meta Tags */}
-        <meta name="apple-mobile-web-app-capable" content="yes" />
-        <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-        <meta name="apple-mobile-web-app-title" content="heldeelife" />
-        <meta name="mobile-web-app-capable" content="yes" />
-        <meta name="format-detection" content="telephone=no" />
-
-        {/* SEO Meta Tags */}
-        <meta name="theme-color" content="#FF6B35" />
-        <meta name="color-scheme" content="light dark" />
-        <meta name="language" content="English" />
-        <meta name="geo.region" content="IN" />
-        <meta name="geo.placename" content="India" />
-
-        {/* LLM-Friendly Meta Tags */}
-        <meta
-          name="robots"
-          content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1"
-        />
-        <meta name="googlebot" content="index, follow" />
-        <meta name="bingbot" content="index, follow" />
-        <meta name="slurp" content="index, follow" />
-
-        {/* Additional SEO */}
-        <meta name="author" content="heldeelife" />
-        <meta name="copyright" content="heldeelife" />
-        <meta name="reply-to" content="support@heldeelife.com" />
-        <meta name="rating" content="general" />
-        <meta name="distribution" content="global" />
-        <meta name="coverage" content="worldwide" />
-        {/* Razorpay Checkout Script */}
-        <script
-          src="https://checkout.razorpay.com/v1/checkout.js"
-          async
-          defer
+        <link
+          rel="alternate"
+          type="text/plain"
+          title="LLM-readable site summary"
+          href="/llms.txt"
         />
       </head>
       <body

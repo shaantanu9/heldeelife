@@ -2,9 +2,6 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth-options'
 import { supabaseAdmin } from '@/lib/supabase/server'
-import { createCachedResponse } from '@/lib/utils/cache-headers'
-import { REVALIDATE_TIMES } from '@/lib/constants'
-
 
 // GET /api/returns - Get returns (user: own, admin: all)
 export async function GET(request: NextRequest) {
@@ -41,10 +38,6 @@ export async function GET(request: NextRequest) {
           product_image,
           quantity,
           unit_price
-        ),
-        users:user_id (
-          email,
-          full_name
         )
       `
       )
@@ -73,14 +66,42 @@ export async function GET(request: NextRequest) {
       )
     }
 
+    // returns.user_id references auth.users (not public.users), so PostgREST
+    // cannot embed the profile. Fetch fallback customer info separately.
+    const missingUserIds = Array.from(
+      new Set(
+        (returns || [])
+          .filter(
+            (r: any) => !r.orders?.customer_name || !r.orders?.customer_email
+          )
+          .map((r: any) => r.user_id)
+          .filter(Boolean)
+      )
+    )
+    const usersById: Record<string, { email?: string; full_name?: string }> = {}
+    if (missingUserIds.length > 0) {
+      const { data: users, error: usersError } = await supabaseAdmin
+        .from('users')
+        .select('id, email, full_name')
+        .in('id', missingUserIds)
+      if (usersError) {
+        console.error('Error fetching return customers:', usersError)
+      }
+      for (const u of users || []) {
+        usersById[u.id] = u
+      }
+    }
+
     // Format returns with customer info
     let formattedReturns = (returns || []).map((returnItem: any) => ({
       ...returnItem,
       order_number: returnItem.orders?.order_number,
       customer_name:
-        returnItem.orders?.customer_name || returnItem.users?.full_name,
+        returnItem.orders?.customer_name ||
+        usersById[returnItem.user_id]?.full_name,
       customer_email:
-        returnItem.orders?.customer_email || returnItem.users?.email,
+        returnItem.orders?.customer_email ||
+        usersById[returnItem.user_id]?.email,
       customer_phone: returnItem.orders?.customer_phone,
     }))
 
@@ -94,15 +115,10 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    // Cache returns for 2 minutes (private cache)
-    return createCachedResponse(
+    // Per-user data: never cache (shared browsers / cross-user leaks)
+    return NextResponse.json(
       { returns: formattedReturns },
-      {
-        public: false,
-        maxAge: REVALIDATE_TIMES.returns, // 2 minutes
-        staleWhileRevalidate: 300, // 5 minutes
-        mustRevalidate: false,
-      }
+      { headers: { 'Cache-Control': 'no-store' } }
     )
   } catch (error) {
     console.error('Error in GET /api/returns:', error)
@@ -162,15 +178,41 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // If a specific item is being returned it must belong to this order
+    let orderItemTotal: number | null = null
+    if (order_item_id) {
+      const { data: orderItem, error: orderItemError } = await supabaseAdmin
+        .from('order_items')
+        .select('id, order_id, total_price')
+        .eq('id', order_item_id)
+        .eq('order_id', order_id)
+        .maybeSingle()
+
+      if (orderItemError || !orderItem) {
+        return NextResponse.json(
+          { error: 'Order item does not belong to this order' },
+          { status: 400 }
+        )
+      }
+      orderItemTotal = Number(orderItem.total_price)
+    }
+
     // Check if return already exists for this order/item
-    const returnQuery = supabaseAdmin
+    let returnQuery = supabaseAdmin
       .from('returns')
       .select('id')
       .eq('order_id', order_id)
-      .in('status', ['pending', 'approved', 'picked_up', 'received'])
+      .in('status', [
+        'pending',
+        'approved',
+        'picked_up',
+        'received',
+        'processed',
+        'refunded',
+      ])
 
     if (order_item_id) {
-      returnQuery.eq('order_item_id', order_item_id)
+      returnQuery = returnQuery.eq('order_item_id', order_item_id)
     }
 
     const { data: existing } = await returnQuery
@@ -183,18 +225,10 @@ export async function POST(request: NextRequest) {
     }
 
     // Calculate refund amount (full order or item-specific)
-    let refundAmount = order.total_amount
-    if (order_item_id) {
-      const { data: orderItem } = await supabaseAdmin
-        .from('order_items')
-        .select('total_price')
-        .eq('id', order_item_id)
-        .single()
-
-      if (orderItem) {
-        refundAmount = orderItem.total_price
-      }
-    }
+    const refundAmount =
+      orderItemTotal !== null && !Number.isNaN(orderItemTotal)
+        ? orderItemTotal
+        : order.total_amount
 
     // Create return request
     const { data: returnRequest, error: returnError } = await supabaseAdmin

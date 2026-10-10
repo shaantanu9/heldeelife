@@ -35,29 +35,75 @@ export default function ResetPasswordPage() {
   const [success, setSuccess] = useState(false)
   const [loading, setLoading] = useState(false)
   const [initializing, setInitializing] = useState(true)
+  const [linkValid, setLinkValid] = useState(false)
 
   useEffect(() => {
-    // Check if we have tokens in the URL hash (Supabase redirects with tokens)
+    // The browser Supabase client (detectSessionInUrl: true) consumes the
+    // recovery tokens from the URL hash (#access_token=...&type=recovery) and
+    // clears the hash, so we must NOT read window.location.hash at submit
+    // time. Instead wait for the PASSWORD_RECOVERY / SIGNED_IN event, or an
+    // already-established session.
+    let cancelled = false
     const hashParams = new URLSearchParams(window.location.hash.substring(1))
-    const accessToken = hashParams.get('access_token')
-    const type = hashParams.get('type')
+    const hashError =
+      hashParams.get('error_description') || hashParams.get('error')
 
-    if (type === 'recovery' && accessToken) {
-      // We have a valid recovery token
+    const markReady = () => {
+      if (cancelled) return
+      setError('')
+      setLinkValid(true)
       setInitializing(false)
-    } else {
-      // Check if token is in query params (fallback)
-      const urlParams = new URLSearchParams(window.location.search)
-      const token = urlParams.get('token')
+    }
 
-      if (!token && !accessToken) {
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((event, session) => {
+      if (
+        session &&
+        (event === 'PASSWORD_RECOVERY' ||
+          event === 'SIGNED_IN' ||
+          event === 'INITIAL_SESSION')
+      ) {
+        markReady()
+      }
+    })
+
+    supabase.auth
+      .getSession()
+      .then(({ data }) => {
+        if (cancelled) return
+        if (data.session) {
+          markReady()
+        } else {
+          // Give the client a moment in case it is still processing the hash
+          setTimeout(async () => {
+            if (cancelled) return
+            const { data: retry } = await supabase.auth.getSession()
+            if (cancelled) return
+            if (retry.session) {
+              markReady()
+            } else {
+              setError(
+                hashError
+                  ? `${hashError}. Please request a new password reset link.`
+                  : 'Invalid or expired reset link. Please request a new password reset link.'
+              )
+              setInitializing(false)
+            }
+          }, 1500)
+        }
+      })
+      .catch(() => {
+        if (cancelled) return
         setError(
-          'Invalid or missing reset token. Please request a new password reset link.'
+          'Invalid or expired reset link. Please request a new password reset link.'
         )
         setInitializing(false)
-      } else {
-        setInitializing(false)
-      }
+      })
+
+    return () => {
+      cancelled = true
+      subscription.unsubscribe()
     }
   }, [])
 
@@ -80,79 +126,48 @@ export default function ResetPasswordPage() {
     setLoading(true)
 
     try {
-      // Extract tokens from URL hash
-      const hashParams = new URLSearchParams(window.location.hash.substring(1))
-      const accessToken = hashParams.get('access_token')
-      const refreshToken = hashParams.get('refresh_token')
+      const {
+        data: { session },
+      } = await supabase.auth.getSession()
 
-      if (!accessToken) {
-        // Fallback to query params
-        const urlParams = new URLSearchParams(window.location.search)
-        const token = urlParams.get('token')
-
-        if (!token) {
-          setError('Invalid or missing reset token')
-          setLoading(false)
-          return
-        }
-
-        // Use API route with token
-        const response = await fetch('/api/auth/reset-password', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            accessToken: token,
-            password,
-          }),
-        })
-
-        const data = await response.json()
-
-        if (!response.ok) {
-          setError(data.error || 'An error occurred. Please try again.')
-          setLoading(false)
-        } else {
-          setSuccess(true)
-          setLoading(false)
-          setTimeout(() => {
-            router.push('/auth/signin')
-          }, 2000)
-        }
-      } else {
-        // Use Supabase client directly with tokens from hash
-        const { error: sessionError } = await supabase.auth.setSession({
-          access_token: accessToken,
-          refresh_token: refreshToken || '',
-        })
-
-        if (sessionError) {
-          setError(
-            'Invalid or expired reset token. Please request a new password reset link.'
-          )
-          setLoading(false)
-          return
-        }
-
-        // Update password
-        const { error: updateError } = await supabase.auth.updateUser({
-          password: password,
-        })
-
-        if (updateError) {
-          setError(
-            updateError.message || 'Failed to reset password. Please try again.'
-          )
-          setLoading(false)
-        } else {
-          setSuccess(true)
-          setLoading(false)
-          setTimeout(() => {
-            router.push('/auth/signin')
-          }, 2000)
-        }
+      if (!session?.access_token) {
+        setError(
+          'Your reset link has expired. Please request a new password reset link.'
+        )
+        setLoading(false)
+        return
       }
+
+      // The server verifies the recovery token (getUser) and updates the
+      // password with the admin API, and records the reset attempt.
+      const response = await fetch('/api/auth/reset-password', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          accessToken: session.access_token,
+          password,
+        }),
+      })
+
+      const data = await response.json().catch(() => ({}))
+
+      if (!response.ok) {
+        setError(data.error || 'An error occurred. Please try again.')
+        setLoading(false)
+        return
+      }
+
+      // Drop the temporary Supabase recovery session; the app itself uses
+      // NextAuth, so the user signs in again with the new password.
+      await supabase.auth.signOut().catch(() => {})
+
+      setSuccess(true)
+      setLoading(false)
+      setTimeout(() => {
+        router.push('/auth/signin')
+      }, 2000)
     } catch (err: any) {
       setError(err.message || 'An error occurred. Please try again.')
       setLoading(false)
@@ -297,7 +312,7 @@ export default function ResetPasswordPage() {
                 <Button
                   type="submit"
                   className="w-full h-12 rounded-lg bg-orange-600 hover:bg-orange-700 text-white font-semibold shadow-md hover:shadow-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed group"
-                  disabled={loading || !!error}
+                  disabled={loading || !linkValid}
                 >
                   {loading ? (
                     <>

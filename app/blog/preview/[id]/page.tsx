@@ -38,7 +38,7 @@ const NewsletterLazy = dynamic(
 )
 
 export const metadata: Metadata = {
-  title: 'Preview | heldeelife',
+  title: 'Preview',
   robots: { index: false, follow: false },
 }
 

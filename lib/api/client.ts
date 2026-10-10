@@ -36,12 +36,17 @@ export class ApiClient {
 
     // Build URL with query params
     // Handle relative baseURL by using window.location.origin in browser
-    let baseURL = this.baseURL
-    if (typeof window !== 'undefined' && baseURL.startsWith('/')) {
-      baseURL = `${window.location.origin}${baseURL}`
-    }
-
-    const url = new URL(endpoint, baseURL)
+    // NOTE: `new URL('/orders', origin + '/api')` resolves to `/orders` (a
+    // leading slash discards the base path), so join the strings instead.
+    const origin =
+      typeof window !== 'undefined'
+        ? window.location.origin
+        : process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'
+    const base = this.baseURL.replace(/\/+$/, '')
+    const path = endpoint.startsWith('/') ? endpoint : `/${endpoint}`
+    const url = /^https?:\/\//.test(base)
+      ? new URL(`${base}${path}`)
+      : new URL(`${base}${path}`, origin)
     if (params) {
       Object.entries(params).forEach(([key, value]) => {
         if (value !== null && value !== undefined && value !== '') {

@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import { Card, CardContent } from '@/components/ui/card'
@@ -18,6 +18,8 @@ import {
   Loader2,
 } from 'lucide-react'
 import Link from 'next/link'
+import { PayNowButton } from '@/components/orders/pay-now-button'
+import { isImageUrl } from '@/lib/utils/image-src'
 import {
   OrderSuccessCelebration,
   OrderSocialProof,
@@ -33,6 +35,10 @@ interface Order {
   order_number: string
   status: string
   payment_status: string
+  payment_method?: string
+  customer_name?: string
+  customer_email?: string
+  customer_phone?: string
   total_amount: number
   created_at: string
   order_items?: Array<{
@@ -47,61 +53,52 @@ interface Order {
 export default function OrderSuccessPage() {
   const searchParams = useSearchParams()
   const router = useRouter()
-  const { data: session } = useSession()
+  const { status: sessionStatus } = useSession()
   const orderId = searchParams.get('orderId')
+  // Guest checkout: the order-scoped token stands in for a session
+  const token = searchParams.get('token')
+  const tokenQuery = token ? `token=${encodeURIComponent(token)}` : ''
   const [order, setOrder] = useState<Order | null>(null)
   const [loading, setLoading] = useState(true)
 
-  useEffect(() => {
-    if (!session) {
-      router.push('/auth/signin')
-      return
-    }
-
-    if (!orderId) {
-      router.push('/orders')
-      return
-    }
-
-    fetchOrder()
-  }, [orderId, session, router])
-
-  const fetchOrder = async () => {
+  const fetchOrder = useCallback(async () => {
+    if (!orderId) return
     try {
-      const response = await fetch(`/api/orders/${orderId}`)
-      if (response.ok) {
-        const data = await response.json()
-        setOrder(data.order)
-      } else {
-        router.push('/orders')
-      }
+      const response = await fetch(
+        `/api/orders/${orderId}${tokenQuery ? `?${tokenQuery}` : ''}`,
+        { cache: 'no-store' }
+      )
+      setOrder(response.ok ? (await response.json()).order : null)
     } catch (error) {
       console.error('Error fetching order:', error)
-      router.push('/orders')
+      setOrder(null)
     } finally {
       setLoading(false)
     }
+  }, [orderId, tokenQuery])
+
+  useEffect(() => {
+    if (!orderId) {
+      router.push('/shop')
+      return
+    }
+    // Wait for the session to resolve so signed-in owners aren't treated as
+    // strangers on a hard refresh
+    if (sessionStatus === 'loading' && !token) return
+    fetchOrder()
+  }, [orderId, token, sessionStatus, router, fetchOrder])
+
+  const invoiceUrl = `/api/orders/${orderId}/invoice${tokenQuery ? `?${tokenQuery}` : ''}`
+  const handleDownloadInvoice = () => {
+    if (!orderId) return
+    // The invoice is a printable HTML page (use the browser's "Save as PDF")
+    window.open(invoiceUrl, '_blank', 'noopener')
   }
 
-  const handleDownloadInvoice = async () => {
-    if (!orderId) return
-    try {
-      const response = await fetch(`/api/orders/${orderId}/invoice`)
-      if (response.ok) {
-        const blob = await response.blob()
-        const url = window.URL.createObjectURL(blob)
-        const a = document.createElement('a')
-        a.href = url
-        a.download = `invoice-${order?.order_number || orderId}.pdf`
-        document.body.appendChild(a)
-        a.click()
-        window.URL.revokeObjectURL(url)
-        document.body.removeChild(a)
-      }
-    } catch (error) {
-      console.error('Error downloading invoice:', error)
-    }
-  }
+  const awaitingPayment =
+    order?.payment_method === 'online' &&
+    order.payment_status !== 'paid' &&
+    order.status === 'pending'
 
   if (loading) {
     return (
@@ -126,11 +123,20 @@ export default function OrderSuccessPage() {
                 Order Not Found
               </h2>
               <p className="text-gray-600 mb-6">
-                We couldn&apos;t find your order. Please check your order history.
+                We couldn&apos;t find your order. If you checked out as a guest,
+                use the link in your confirmation or track your order by order
+                number.
               </p>
-              <Button asChild className="bg-orange-600 hover:bg-orange-700">
-                <Link href="/orders">View Orders</Link>
-              </Button>
+              <div className="flex flex-wrap justify-center gap-3">
+                <Button asChild className="bg-orange-600 hover:bg-orange-700">
+                  <Link href="/tracking">Track an Order</Link>
+                </Button>
+                {sessionStatus === 'authenticated' && (
+                  <Button asChild variant="outline">
+                    <Link href="/profile/orders">My Orders</Link>
+                  </Button>
+                )}
+              </div>
             </CardContent>
           </Card>
         </div>
@@ -144,7 +150,11 @@ export default function OrderSuccessPage() {
         <div className="max-w-4xl mx-auto space-y-6">
           {/* Success Celebration */}
           <OrderSuccessCelebration
-            orderNumber={order.order_number || order.id.slice(0, 8).toUpperCase()}
+            orderNumber={
+              order.order_number || order.id.slice(0, 8).toUpperCase()
+            }
+            paymentStatus={order.payment_status}
+            paymentMethod={order.payment_method}
           />
 
           {/* Social Proof */}
@@ -171,8 +181,38 @@ export default function OrderSuccessPage() {
                       Paid
                     </Badge>
                   )}
+                  {order.payment_method === 'cod' && (
+                    <Badge className="mt-2 bg-orange-100 text-orange-800">
+                      Cash on Delivery
+                    </Badge>
+                  )}
                 </div>
               </div>
+
+              {awaitingPayment && (
+                <div className="mb-6 rounded-lg border border-amber-200 bg-amber-50 p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                  <div>
+                    <p className="font-semibold text-amber-900">
+                      Payment pending
+                    </p>
+                    <p className="text-sm text-amber-800">
+                      Your items are reserved. Complete payment within 60
+                      minutes to confirm the order.
+                    </p>
+                  </div>
+                  <PayNowButton
+                    orderId={order.id}
+                    orderNumber={order.order_number}
+                    accessToken={token}
+                    prefill={{
+                      name: order.customer_name,
+                      email: order.customer_email,
+                      contact: order.customer_phone,
+                    }}
+                    onPaid={fetchOrder}
+                  />
+                </div>
+              )}
 
               {order.order_items && order.order_items.length > 0 && (
                 <div className="border-t border-gray-200 pt-6">
@@ -186,7 +226,7 @@ export default function OrderSuccessPage() {
                         className="flex items-center gap-4 p-3 bg-gray-50 rounded-lg"
                       >
                         <div className="w-16 h-16 bg-orange-50 rounded-lg flex items-center justify-center flex-shrink-0">
-                          {item.product_image ? (
+                          {isImageUrl(item.product_image) ? (
                             <img
                               src={item.product_image}
                               alt={item.product_name}
@@ -229,26 +269,28 @@ export default function OrderSuccessPage() {
 
           {/* Share Order */}
           <OrderShare
-            orderNumber={order.order_number || order.id.slice(0, 8).toUpperCase()}
+            orderNumber={
+              order.order_number || order.id.slice(0, 8).toUpperCase()
+            }
           />
 
           {/* Action Buttons */}
           <div className="grid md:grid-cols-3 gap-4">
-            <Button
-              asChild
-              className="w-full bg-orange-600 hover:bg-orange-700 text-white"
-            >
-              <Link href={`/orders/${order.id}`}>
-                <Package className="h-4 w-4 mr-2" />
-                View Order Details
-              </Link>
-            </Button>
-            <Button
-              asChild
-              variant="outline"
-              className="w-full"
-            >
-              <Link href={`/tracking?orderId=${order.id}`}>
+            {sessionStatus === 'authenticated' && (
+              <Button
+                asChild
+                className="w-full bg-orange-600 hover:bg-orange-700 text-white"
+              >
+                <Link href={`/orders/${order.id}`}>
+                  <Package className="h-4 w-4 mr-2" />
+                  View Order Details
+                </Link>
+              </Button>
+            )}
+            <Button asChild variant="outline" className="w-full">
+              <Link
+                href={`/tracking?orderId=${order.id}${tokenQuery ? `&${tokenQuery}` : ''}`}
+              >
                 <Truck className="h-4 w-4 mr-2" />
                 Track Order
               </Link>
@@ -289,12 +331,3 @@ export default function OrderSuccessPage() {
     </div>
   )
 }
-
-
-
-
-
-
-
-
-

@@ -72,18 +72,19 @@ export function MobileProductDetail({ product }: MobileProductDetailProps) {
 
     setIsAddingToCart(true)
     try {
-      await new Promise((resolve) => setTimeout(resolve, 300))
 
-      for (let i = 0; i < quantity; i++) {
-        addToCart({
+      addToCart(
+        {
           id: product.id,
           product_id: product.product_id,
           name: product.name,
           price: Number(product.price),
           image: product.image || '📦',
           sku: product.sku,
-        })
-      }
+          maxQuantity: product.stockQuantity,
+        },
+        quantity
+      )
 
       toast.success(
         `${quantity} item${quantity > 1 ? 's' : ''} added to cart!`,

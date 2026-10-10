@@ -60,8 +60,12 @@ export async function GET(
       .eq('product_id', product.id)
       .single()
 
-    // Track product view
-    if (session?.user) {
+    // Track product view only when explicitly requested (?view=1). This
+    // endpoint is also polled for cart/order validation, which must not
+    // inflate view counts. Product pages record views via
+    // /api/analytics/track instead.
+    const recordView = request.nextUrl.searchParams.get('view') === '1'
+    if (recordView && session?.user) {
       await supabaseAdmin.from('product_views').insert({
         product_id: product.id,
         user_id: session.user.id,

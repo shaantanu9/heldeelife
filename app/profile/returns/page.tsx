@@ -6,13 +6,7 @@ import { useRouter } from 'next/navigation'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import {
-  Loader2,
-  ArrowLeft,
-  Package,
-  RefreshCw,
-  XCircle,
-} from 'lucide-react'
+import { Loader2, ArrowLeft, Package, RefreshCw, XCircle } from 'lucide-react'
 import Link from 'next/link'
 import { toast } from 'sonner'
 import { OrderStatusBadge } from '@/components/orders'
@@ -43,18 +37,22 @@ interface ReturnRequest {
 }
 
 export default function ReturnsPage() {
-  const { data: session } = useSession()
+  const { data: session, status } = useSession()
   const router = useRouter()
   const [returns, setReturns] = useState<ReturnRequest[]>([])
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
-    if (!session) {
-      router.push('/auth/signin')
+    // Wait for the session to load; only redirect when definitely signed out
+    if (status === 'unauthenticated') {
+      router.push(
+        `/auth/signin?callbackUrl=${encodeURIComponent(window.location.pathname)}`
+      )
       return
     }
+    if (!session) return
     fetchReturns()
-  }, [session, router])
+  }, [session, status, router])
 
   const fetchReturns = async () => {
     try {
@@ -154,7 +152,7 @@ export default function ReturnsPage() {
                 asChild
                 className="rounded-lg bg-orange-600 hover:bg-orange-700 text-white"
               >
-                <Link href="/orders">View Orders</Link>
+                <Link href="/profile/orders">View Orders</Link>
               </Button>
             </CardContent>
           </Card>
@@ -173,9 +171,8 @@ export default function ReturnsPage() {
                           Return Request
                         </CardTitle>
                         <Badge className={getStatusColor(returnRequest.status)}>
-                          {returnRequest.status
-                            .charAt(0)
-                            .toUpperCase() + returnRequest.status.slice(1)}
+                          {returnRequest.status.charAt(0).toUpperCase() +
+                            returnRequest.status.slice(1)}
                         </Badge>
                       </div>
                       <p className="text-sm text-gray-600">
@@ -206,7 +203,9 @@ export default function ReturnsPage() {
                       <p className="text-sm font-semibold text-gray-900 mb-1">
                         Description
                       </p>
-                      <p className="text-gray-600">{returnRequest.description}</p>
+                      <p className="text-gray-600">
+                        {returnRequest.description}
+                      </p>
                     </div>
                     {returnRequest.order_items && (
                       <div>
@@ -255,7 +254,9 @@ export default function ReturnsPage() {
                     )}
                     <div className="flex gap-3 pt-4 border-t border-gray-200">
                       <Button asChild variant="outline" className="flex-1">
-                        <Link href={`/orders/${returnRequest.order_id}`}>
+                        <Link
+                          href={`/profile/orders/${returnRequest.order_id}`}
+                        >
                           View Order
                         </Link>
                       </Button>
@@ -307,13 +308,3 @@ export default function ReturnsPage() {
     </div>
   )
 }
-
-
-
-
-
-
-
-
-
-

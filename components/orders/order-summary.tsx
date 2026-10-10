@@ -69,12 +69,3 @@ export function OrderSummary({
     </Card>
   )
 }
-
-
-
-
-
-
-
-
-

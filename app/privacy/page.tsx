@@ -1,16 +1,30 @@
-import { Metadata } from 'next'
+import { buildMetadata } from '@/lib/seo/metadata'
+import { JsonLd } from '@/lib/seo/json-ld'
+import { webPageSchema } from '@/lib/seo/schema'
 
-export const metadata: Metadata = {
-  title: 'Privacy Policy | heldeelife',
+export const metadata = buildMetadata({
+  title: 'Privacy Policy',
   description:
-    'Read heldeelife&apos;s Privacy Policy to understand how we collect, use, and protect your personal information.',
-}
+    'Read heldeelife’s Privacy Policy to understand how we collect, use and protect your personal information.',
+  path: '/privacy',
+})
 
 export const dynamic = 'force-static'
 
 export default function PrivacyPolicyPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-orange-50/40 py-8 md:py-16">
+      <JsonLd
+        data={webPageSchema({
+          path: '/privacy',
+          name: 'Privacy Policy',
+          type: 'WebPage',
+          breadcrumb: [
+            { name: 'Home', path: '/' },
+            { name: 'Privacy Policy', path: '/privacy' },
+          ],
+        })}
+      />
       <div className="container px-4">
         <div className="max-w-4xl mx-auto">
           <h1 className="text-4xl font-bold text-gray-900 mb-4">

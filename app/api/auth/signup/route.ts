@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase/server'
+import { createIsolatedAuthClient } from '@/lib/supabase/auth-client'
 import {
   toEmailFormat,
   extractPhoneFromEmail,
@@ -16,7 +17,14 @@ export async function POST(request: NextRequest) {
     if (!rateLimitResult.success) {
       return NextResponse.json(
         { error: 'Too many signup attempts. Please try again later.' },
-        { status: 429, headers: { 'Retry-After': String(Math.ceil((rateLimitResult.reset - Date.now()) / 1000)) } }
+        {
+          status: 429,
+          headers: {
+            'Retry-After': String(
+              Math.ceil((rateLimitResult.reset - Date.now()) / 1000)
+            ),
+          },
+        }
       )
     }
 
@@ -51,18 +59,23 @@ export async function POST(request: NextRequest) {
       ? normalizePhoneNumber(emailOrPhone)
       : null
 
-    // Sign up with Supabase
-    const { data: authData, error: authError } =
-      await supabaseAdmin.auth.signUp({
-        email,
-        password,
-        options: {
-          data: {
-            full_name: fullName || null,
-            phone_number: phoneNumber,
-          },
+    // Sign up with a throwaway per-request client. NEVER call
+    // supabaseAdmin.auth.signUp: when email confirmation is disabled it
+    // stores the new user's session on the shared service-role client, so
+    // every later supabaseAdmin query would run under that user's JWT.
+    // (signUp is kept over admin.createUser to preserve Supabase's
+    // confirmation-email behaviour.)
+    const authClient = createIsolatedAuthClient()
+    const { data: authData, error: authError } = await authClient.auth.signUp({
+      email,
+      password,
+      options: {
+        data: {
+          full_name: fullName || null,
+          phone_number: phoneNumber,
         },
-      })
+      },
+    })
 
     if (authError) {
       return NextResponse.json({ error: authError.message }, { status: 400 })

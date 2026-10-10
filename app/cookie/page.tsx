@@ -1,16 +1,30 @@
-import { Metadata } from 'next'
+import { buildMetadata } from '@/lib/seo/metadata'
+import { JsonLd } from '@/lib/seo/json-ld'
+import { webPageSchema } from '@/lib/seo/schema'
 
-export const metadata: Metadata = {
-  title: 'Cookie Policy | heldeelife',
+export const metadata = buildMetadata({
+  title: 'Cookie Policy',
   description:
-    'Learn about how heldeelife uses cookies and similar tracking technologies to enhance your browsing experience.',
-}
+    'Learn how heldeelife uses cookies and similar technologies to run the site and improve your browsing experience.',
+  path: '/cookie',
+})
 
 export const dynamic = 'force-static'
 
 export default function CookiePolicyPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-orange-50/40 py-8 md:py-16">
+      <JsonLd
+        data={webPageSchema({
+          path: '/cookie',
+          name: 'Cookie Policy',
+          type: 'WebPage',
+          breadcrumb: [
+            { name: 'Home', path: '/' },
+            { name: 'Cookie Policy', path: '/cookie' },
+          ],
+        })}
+      />
       <div className="container px-4">
         <div className="max-w-4xl mx-auto">
           <h1 className="text-4xl font-bold text-gray-900 mb-4">
@@ -253,4 +267,3 @@ export default function CookiePolicyPage() {
     </div>
   )
 }
-

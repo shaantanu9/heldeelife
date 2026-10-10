@@ -1,18 +1,32 @@
 import { Card, CardContent } from '@/components/ui/card'
 import { Truck, Package, Clock, MapPin, Shield } from 'lucide-react'
-import { Metadata } from 'next'
+import { buildMetadata } from '@/lib/seo/metadata'
+import { JsonLd } from '@/lib/seo/json-ld'
+import { webPageSchema } from '@/lib/seo/schema'
 
-export const metadata: Metadata = {
-  title: 'Shipping Policy | heldeelife',
+export const metadata = buildMetadata({
+  title: 'Shipping Policy — Delivery Times & Charges',
   description:
-    'Learn about heldeelife&apos;s shipping policy, delivery times, shipping charges, and order tracking information.',
-}
+    'heldeelife ships across India. Free shipping on orders above ₹500, delivery in 3–15 business days by location, express and same-day options, and order tracking.',
+  path: '/shipping',
+})
 
 export const dynamic = 'force-static'
 
 export default function ShippingPolicyPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-orange-50/40 py-8 md:py-16">
+      <JsonLd
+        data={webPageSchema({
+          path: '/shipping',
+          name: 'Shipping Policy',
+          type: 'WebPage',
+          breadcrumb: [
+            { name: 'Home', path: '/' },
+            { name: 'Shipping Policy', path: '/shipping' },
+          ],
+        })}
+      />
       <div className="container px-4">
         <div className="max-w-4xl mx-auto">
           <h1 className="text-4xl font-bold text-gray-900 mb-4">

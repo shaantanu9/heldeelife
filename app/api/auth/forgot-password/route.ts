@@ -21,6 +21,25 @@ function getClientIP(request: NextRequest): string | null {
   return null
 }
 
+/**
+ * Look up a user id by email for audit logging. Uses public.users (which
+ * mirrors auth.users ids/emails); `auth.users` is not reachable through
+ * PostgREST and admin.listUsers() is paginated, so neither is used.
+ */
+async function findUserIdByEmail(email: string): Promise<string | null> {
+  try {
+    const { data } = await supabaseAdmin
+      .from('users')
+      .select('id')
+      .eq('email', email)
+      .maybeSingle()
+    return (data?.id as string | undefined) ?? null
+  } catch (error) {
+    console.error('Error finding user for logging:', error)
+    return null
+  }
+}
+
 export async function POST(request: NextRequest) {
   try {
     const { emailOrPhone } = await request.json()
@@ -53,15 +72,10 @@ export async function POST(request: NextRequest) {
     ) {
       // Still log the attempt but don't send email
       try {
-        // Try to find user_id
-        const { data: userData } = await supabaseAdmin
-          .from('auth.users')
-          .select('id')
-          .eq('email', email)
-          .single()
+        const userId = await findUserIdByEmail(email)
 
         await supabaseAdmin.rpc('log_password_reset_attempt', {
-          p_user_id: userData?.id || null,
+          p_user_id: userId,
           p_email: email,
           p_ip_address: ipAddress,
           p_user_agent: userAgent,
@@ -84,33 +98,20 @@ export async function POST(request: NextRequest) {
     }
 
     // Get the site URL for the reset link
-    const siteUrl =
+    const siteUrl = (
       process.env.NEXT_PUBLIC_SITE_URL ||
       process.env.SITE_URL ||
       'http://localhost:3000'
+    ).replace(/\/+$/, '')
 
-    // Generate password reset link using Supabase
-    const { data, error } = await supabaseAdmin.auth.resetPasswordForEmail(
-      email,
-      {
-        redirectTo: `${siteUrl}/auth/reset-password`,
-      }
-    )
+    // Generate password reset link using Supabase. resetPasswordForEmail does
+    // not create a session, so it is safe on the shared admin client.
+    const { error } = await supabaseAdmin.auth.resetPasswordForEmail(email, {
+      redirectTo: `${siteUrl}/auth/reset-password`,
+    })
 
-    // Try to find user_id for logging
-    let userId: string | null = null
-    try {
-      // Use admin API to find user by email
-      const { data: userData, error: userError } =
-        await supabaseAdmin.auth.admin.listUsers()
-      if (!userError && userData?.users) {
-        const user = userData.users.find((u) => u.email === email)
-        userId = user?.id || null
-      }
-    } catch (userError) {
-      // Silently fail - logging is optional
-      console.error('Error finding user for logging:', userError)
-    }
+    // Try to find user_id for logging (never revealed to the caller)
+    const userId = await findUserIdByEmail(email)
 
     // Log the password reset attempt
     try {

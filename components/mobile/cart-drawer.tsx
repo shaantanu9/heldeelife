@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { computeOrderTotals } from '@/lib/commerce/totals'
 import { useCart } from '@/contexts/cart-context'
 import { Button } from '@/components/ui/button'
 import {
@@ -75,8 +76,9 @@ export function CartDrawer({ children }: CartDrawerProps) {
     }
   }
 
-  const tax = totalPrice * 0.18
-  const finalTotal = totalPrice + tax
+  // Same totals as cart, checkout and the server (GST-inclusive prices)
+  const totals = computeOrderTotals(totalPrice)
+  const finalTotal = totals.total
 
   return (
     <Sheet open={isOpen} onOpenChange={setIsOpen}>
@@ -249,15 +251,18 @@ export function CartDrawer({ children }: CartDrawerProps) {
                 </span>
               </div>
               <div className="flex justify-between text-sm">
-                <span className="text-gray-600">Tax (18%)</span>
-                <span className="text-gray-900 font-semibold">
-                  Rs. {tax.toFixed(2)}
-                </span>
-              </div>
-              <div className="flex justify-between text-sm">
                 <span className="text-gray-600">Shipping</span>
-                <span className="text-green-600 font-semibold">Free</span>
+                {totals.shipping > 0 ? (
+                  <span className="text-gray-900 font-semibold">
+                    Rs. {totals.shipping.toFixed(2)}
+                  </span>
+                ) : (
+                  <span className="text-green-600 font-semibold">Free</span>
+                )}
               </div>
+              <p className="text-xs text-gray-500">
+                Prices include GST (Rs. {totals.tax.toFixed(2)})
+              </p>
               <div className="border-t border-gray-200 pt-3 flex justify-between">
                 <span className="text-lg font-bold text-gray-900">Total</span>
                 <span className="text-lg font-bold text-orange-600">
@@ -292,12 +297,3 @@ export function CartDrawer({ children }: CartDrawerProps) {
     </Sheet>
   )
 }
-
-
-
-
-
-
-
-
-

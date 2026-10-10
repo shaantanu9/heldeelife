@@ -26,6 +26,7 @@ import {
   Sparkles,
 } from 'lucide-react'
 import Link from 'next/link'
+import { sanitizeCallbackUrl } from '../callback-url'
 
 export default function SignUpPage() {
   const router = useRouter()
@@ -79,8 +80,19 @@ export default function SignUpPage() {
       } else {
         setSuccess(data.message || 'Account created successfully!')
         // Redirect to sign in after 2 seconds
+        // Forward a (sanitised) callbackUrl so the user lands where they
+        // were heading after signing in.
+        const callbackUrl = sanitizeCallbackUrl(
+          new URLSearchParams(window.location.search).get('callbackUrl'),
+          '',
+          window.location.origin
+        )
         setTimeout(() => {
-          router.push('/auth/signin')
+          router.push(
+            callbackUrl
+              ? `/auth/signin?callbackUrl=${encodeURIComponent(callbackUrl)}`
+              : '/auth/signin'
+          )
         }, 2000)
       }
     } catch (err: any) {

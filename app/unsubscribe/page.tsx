@@ -1,4 +1,7 @@
 import { supabaseAdmin } from '@/lib/supabase/server'
+import { privateMetadata } from '@/lib/seo/metadata'
+
+export const metadata = privateMetadata('Unsubscribe')
 
 interface UnsubscribePageProps {
   searchParams: Promise<{ email?: string }>

@@ -63,7 +63,7 @@ interface Order {
 }
 
 export default function RefundsPage() {
-  const { data: session } = useSession()
+  const { data: session, status } = useSession()
   const router = useRouter()
   const [refunds, setRefunds] = useState<RefundRequest[]>([])
   const [orders, setOrders] = useState<Order[]>([])
@@ -76,17 +76,21 @@ export default function RefundsPage() {
   })
 
   useEffect(() => {
-    if (!session) {
-      router.push('/auth/signin')
+    // Wait for the session to load; only redirect when definitely signed out
+    if (status === 'unauthenticated') {
+      router.push(
+        `/auth/signin?callbackUrl=${encodeURIComponent(window.location.pathname)}`
+      )
       return
     }
+    if (!session) return
     fetchData()
-  }, [session, router])
+  }, [session, status, router])
 
   const fetchData = async () => {
     try {
       // Fetch user orders (only delivered orders can be refunded)
-      const ordersRes = await fetch('/api/orders')
+      const ordersRes = await fetch('/api/orders?scope=mine')
       if (ordersRes.ok) {
         const ordersData = await ordersRes.json()
         const eligibleOrders =
@@ -409,12 +413,3 @@ export default function RefundsPage() {
     </div>
   )
 }
-
-
-
-
-
-
-
-
-

@@ -60,15 +60,17 @@ export function QuickViewModal({
     : 0
 
   const handleAddToCart = () => {
-    for (let i = 0; i < quantity; i++) {
-      addToCart({
+    addToCart(
+      {
         id: product.id,
         product_id: product.product_id,
         name: product.name,
         price: product.price,
         image: product.image,
-      })
-    }
+        maxQuantity: product.stockQuantity,
+      },
+      quantity
+    )
     toast.success('Added to cart!', {
       description: `${quantity} x ${product.name}`,
     })
@@ -238,12 +240,3 @@ export function QuickViewModal({
     </Dialog>
   )
 }
-
-
-
-
-
-
-
-
-

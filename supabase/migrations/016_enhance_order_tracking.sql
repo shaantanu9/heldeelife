@@ -79,9 +79,11 @@ CREATE INDEX IF NOT EXISTS idx_order_status_history_status
   ON order_status_history(status, created_at DESC);
 
 -- Index for recent status changes
+-- (A partial index with now() in its predicate is rejected by Postgres —
+-- "functions in index predicate must be marked IMMUTABLE" — which made this
+-- whole migration fail. A plain index on created_at serves the same queries.)
 CREATE INDEX IF NOT EXISTS idx_order_status_history_recent 
-  ON order_status_history(created_at DESC) 
-  WHERE created_at > now() - INTERVAL '30 days';
+  ON order_status_history(created_at DESC);
 
 -- ============================================
 -- INDEXES FOR ORDERS TABLE

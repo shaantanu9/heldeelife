@@ -1,12 +1,15 @@
 import { Card, CardContent } from '@/components/ui/card'
 import { Heart, Leaf, Users, Award } from 'lucide-react'
-import { Metadata } from 'next'
+import { buildMetadata } from '@/lib/seo/metadata'
+import { JsonLd } from '@/lib/seo/json-ld'
+import { webPageSchema } from '@/lib/seo/schema'
 
-export const metadata: Metadata = {
-  title: 'About Us | heldeelife',
+export const metadata = buildMetadata({
+  title: 'About Us — Where Ayurveda Meets Modern Medicine',
   description:
-    'Learn about heldeelife - combining traditional Ayurvedic wisdom with modern medicine to provide holistic wellness products and expert consultations.',
-}
+    'heldeelife combines traditional Ayurvedic wisdom with modern medicine to offer authentic wellness products and expert consultations across India. Learn our story and values.',
+  path: '/about',
+})
 
 export const dynamic = 'force-static'
 
@@ -40,6 +43,17 @@ const values = [
 export default function AboutPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-orange-50/40 py-8 md:py-16">
+      <JsonLd
+        data={webPageSchema({
+          path: '/about',
+          name: 'About Us',
+          type: 'AboutPage',
+          breadcrumb: [
+            { name: 'Home', path: '/' },
+            { name: 'About Us', path: '/about' },
+          ],
+        })}
+      />
       <div className="container px-4">
         <div className="max-w-4xl mx-auto">
           <h1 className="text-4xl font-bold text-gray-900 mb-4">

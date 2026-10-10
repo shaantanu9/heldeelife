@@ -4,19 +4,49 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Mail, Gift, CheckCircle2, ArrowRight } from 'lucide-react'
 import { useState } from 'react'
+import { toast } from 'sonner'
 
 export function Newsletter() {
   const [email, setEmail] = useState('')
   const [submitted, setSubmitted] = useState(false)
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const [isSubmitting, setIsSubmitting] = useState(false)
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    // Handle newsletter subscription
-    setSubmitted(true)
-    setTimeout(() => {
-      setSubmitted(false)
-      setEmail('')
-    }, 3000)
+    if (isSubmitting) return
+    setIsSubmitting(true)
+    try {
+      const res = await fetch('/api/inquiries', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type: 'newsletter',
+          email,
+          source: 'homepage-newsletter',
+        }),
+      })
+      const data = await res.json().catch(() => null)
+      if (!res.ok) {
+        throw new Error(
+          data?.error || 'Something went wrong. Please try again.'
+        )
+      }
+      toast.success('Thank you for subscribing!')
+      setSubmitted(true)
+      setTimeout(() => {
+        setSubmitted(false)
+        setEmail('')
+      }, 3000)
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : 'Something went wrong. Please try again.'
+      )
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   return (
@@ -107,9 +137,10 @@ export function Newsletter() {
                   <Button
                     type="submit"
                     size="lg"
+                    disabled={isSubmitting}
                     className="bg-white text-orange-600 hover:bg-gray-50 rounded-lg font-semibold shadow-lg hover:shadow-xl transition-all duration-200 h-12 px-6"
                   >
-                    Subscribe
+                    {isSubmitting ? 'Subscribing...' : 'Subscribe'}
                     <ArrowRight className="ml-2 h-4 w-4" />
                   </Button>
                 </div>

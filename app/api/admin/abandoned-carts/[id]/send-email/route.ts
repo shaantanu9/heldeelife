@@ -5,7 +5,15 @@ import { authOptions } from '@/lib/auth-options'
 import { supabaseAdmin } from '@/lib/supabase/server'
 import { rateLimit, getRateLimitIdentifier } from '@/lib/rate-limit'
 
-const resend = new Resend(process.env.RESEND_API_KEY)
+// Created lazily: the Resend constructor throws without an API key, which
+// would otherwise crash `next build` and every environment lacking the key.
+let resendClient: Resend | null = null
+function getResend(): Resend {
+  if (!process.env.RESEND_API_KEY) {
+    throw new Error('RESEND_API_KEY is not configured')
+  }
+  return (resendClient ??= new Resend(process.env.RESEND_API_KEY))
+}
 
 /** Escape HTML special chars to prevent XSS in email templates */
 function escapeHtml(value: unknown): string {
@@ -215,7 +223,7 @@ export async function POST(
     const from =
       process.env.RESEND_FROM_EMAIL || 'noreply@heldeelife.com'
 
-    const { data: emailData, error: emailError } = await resend.emails.send({
+    const { data: emailData, error: emailError } = await getResend().emails.send({
       from,
       to: cart.email,
       subject: 'You left something behind... 🛒',

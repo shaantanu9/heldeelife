@@ -6,7 +6,6 @@ import { createCachedResponse } from '@/lib/utils/cache-headers'
 import { REVALIDATE_TIMES } from '@/lib/constants'
 import { rateLimit, getRateLimitIdentifier } from '@/lib/rate-limit'
 
-
 // GET /api/reviews - Get reviews
 export async function GET(request: NextRequest) {
   try {
@@ -33,7 +32,8 @@ export async function GET(request: NextRequest) {
 
     // Public can only see approved reviews
     const session = await getServerSession(authOptions)
-    if (!session?.user || session.user.role !== 'admin') {
+    const isAdmin = session?.user?.role === 'admin'
+    if (!isAdmin) {
       query = query.eq('moderation_status', 'approved')
     } else if (!approved) {
       // Admin can filter by moderation status
@@ -58,9 +58,10 @@ export async function GET(request: NextRequest) {
       ]
 
       if (userIds.length > 0) {
+        // Only expose reviewer names publicly; emails are for admins only
         const { data: users } = await supabaseAdmin
           .from('users')
-          .select('id, full_name, email')
+          .select(isAdmin ? 'id, full_name, email' : 'id, full_name')
           .in('id', userIds)
 
         const usersMap = new Map(users?.map((u: any) => [u.id, u]) || [])
@@ -70,6 +71,13 @@ export async function GET(request: NextRequest) {
           ...review,
           users: usersMap.get(review.user_id) || null,
         }))
+
+        if (isAdmin) {
+          // Admin responses include reviewer emails: never cache publicly
+          const response = NextResponse.json({ reviews: reviewsWithUsers })
+          response.headers.set('Cache-Control', 'private, no-store')
+          return response
+        }
 
         // Cache reviews for 10 minutes
         return createCachedResponse(
@@ -114,11 +122,22 @@ export async function POST(request: NextRequest) {
 
     // Rate limit: 5 reviews per 10 minutes
     const ip = getRateLimitIdentifier(request)
-    const rateLimitResult = await rateLimit(`reviews:${session.user.id || ip}`, 5, 600)
+    const rateLimitResult = await rateLimit(
+      `reviews:${session.user.id || ip}`,
+      5,
+      600
+    )
     if (!rateLimitResult.success) {
       return NextResponse.json(
         { error: 'Too many reviews. Please try again later.' },
-        { status: 429, headers: { 'Retry-After': String(Math.ceil((rateLimitResult.reset - Date.now()) / 1000)) } }
+        {
+          status: 429,
+          headers: {
+            'Retry-After': String(
+              Math.ceil((rateLimitResult.reset - Date.now()) / 1000)
+            ),
+          },
+        }
       )
     }
 
@@ -127,7 +146,9 @@ export async function POST(request: NextRequest) {
 
     // Sanitize text fields to prevent XSS
     const title = body.title ? body.title.replace(/<[^>]*>/g, '').trim() : null
-    const comment = body.comment ? body.comment.replace(/<[^>]*>/g, '').trim() : null
+    const comment = body.comment
+      ? body.comment.replace(/<[^>]*>/g, '').trim()
+      : null
 
     if (!product_id || !rating) {
       return NextResponse.json(

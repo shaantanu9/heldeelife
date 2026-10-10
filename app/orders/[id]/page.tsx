@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Loader2, ArrowLeft, Truck, XCircle, Download } from 'lucide-react'
 import Link from 'next/link'
+import { PayNowButton } from '@/components/orders/pay-now-button'
 import {
   OrderStatusBadge,
   OrderTimeline,
@@ -28,7 +29,7 @@ import {
 import { PostPurchaseJourney } from '@/components/conversion/post-purchase-journey'
 
 export default function OrderDetailsPage() {
-  const { data: session } = useSession()
+  const { data: session, status: sessionStatus } = useSession()
   const router = useRouter()
   const params = useParams()
   const orderId = params.id as string
@@ -36,12 +37,16 @@ export default function OrderDetailsPage() {
     useOrderContext()
 
   useEffect(() => {
+    // Wait for the session to load; only bounce when truly signed out
+    if (sessionStatus === 'loading') return
     if (!session) {
-      router.push('/auth/signin')
+      router.push(
+        `/auth/signin?callbackUrl=${encodeURIComponent(window.location.pathname)}`
+      )
       return
     }
     setCurrentOrderId(orderId)
-  }, [session, orderId, router, setCurrentOrderId])
+  }, [session, sessionStatus, orderId, router, setCurrentOrderId])
 
   const handleCancelOrder = async () => {
     if (!confirm('Are you sure you want to cancel this order?')) {
@@ -50,7 +55,7 @@ export default function OrderDetailsPage() {
 
     try {
       await cancelOrder(orderId, 'Cancelled by customer')
-      router.push('/orders')
+      router.push('/profile/orders')
     } catch (error) {
       console.error('Error cancelling order:', error)
       alert('Failed to cancel order. Please try again.')
@@ -101,26 +106,9 @@ export default function OrderDetailsPage() {
 
   const order = currentOrder as any
 
-  const handleDownloadInvoice = async () => {
-    try {
-      const response = await fetch(`/api/orders/${orderId}/invoice`)
-      if (response.ok) {
-        const blob = await response.blob()
-        const url = window.URL.createObjectURL(blob)
-        const a = document.createElement('a')
-        a.href = url
-        a.download = `invoice-${order.order_number || orderId}.pdf`
-        document.body.appendChild(a)
-        a.click()
-        window.URL.revokeObjectURL(url)
-        document.body.removeChild(a)
-      } else {
-        alert('Failed to download invoice. Please try again.')
-      }
-    } catch (error) {
-      console.error('Error downloading invoice:', error)
-      alert('Failed to download invoice. Please try again.')
-    }
+  // The invoice is a printable HTML page (browser "Save as PDF")
+  const handleDownloadInvoice = () => {
+    window.open(`/api/orders/${orderId}/invoice`, '_blank', 'noopener')
   }
 
   // Build timeline events from order
@@ -170,6 +158,8 @@ export default function OrderDetailsPage() {
               orderNumber={
                 order.order_number || order.id.slice(0, 8).toUpperCase()
               }
+              paymentStatus={order.payment_status}
+              paymentMethod={order.payment_method}
             />
           )}
 
@@ -305,16 +295,33 @@ export default function OrderDetailsPage() {
           {/* Actions */}
           <Card className="border-gray-200 shadow-xl bg-white">
             <CardContent className="p-6">
-              <div className="flex gap-4">
-                {currentOrder.status === 'pending' && (
-                  <Button
-                    variant="outline"
-                    className="flex-1"
-                    onClick={handleCancelOrder}
-                  >
-                    Cancel Order
-                  </Button>
-                )}
+              <div className="flex flex-wrap gap-4">
+                {order.payment_method === 'online' &&
+                  order.payment_status !== 'paid' &&
+                  currentOrder.status === 'pending' && (
+                    <PayNowButton
+                      orderId={order.id}
+                      orderNumber={order.order_number}
+                      prefill={{
+                        name: order.customer_name,
+                        email: order.customer_email,
+                        contact: order.customer_phone,
+                      }}
+                      onPaid={() => window.location.reload()}
+                      className="flex-1 bg-orange-600 hover:bg-orange-700"
+                    />
+                  )}
+                {/* Paid orders are cancelled via support (refund needed) */}
+                {currentOrder.status === 'pending' &&
+                  order.payment_status !== 'paid' && (
+                    <Button
+                      variant="outline"
+                      className="flex-1"
+                      onClick={handleCancelOrder}
+                    >
+                      Cancel Order
+                    </Button>
+                  )}
                 <Button asChild variant="outline" className="flex-1">
                   <Link href={`/tracking?orderId=${orderId}`}>
                     <Truck className="h-4 w-4 mr-2" />

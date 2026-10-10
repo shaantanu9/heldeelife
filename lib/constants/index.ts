@@ -3,11 +3,13 @@
  * Centralized configuration and constants for the application
  */
 
+import { SITE } from '@/lib/seo/site'
+
 // App Configuration
 export const APP_CONFIG = {
-  name: 'HeldeeLife',
-  description: 'Ayurveda and Modern Medicine E-commerce Platform',
-  url: process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000',
+  name: SITE.name,
+  description: SITE.description,
+  url: SITE.url,
   version: '0.1.0',
 } as const
 
@@ -241,7 +243,11 @@ export const SUCCESS_MESSAGES = {
 // Business Configuration
 export const BUSINESS_CONFIG = {
   taxRate: 0.18,
+  // Indian retail prices (MRP) are GST-inclusive: tax is reported as the
+  // component already contained in the price, never added on top.
+  pricesIncludeTax: true,
   freeShippingThreshold: 500,
+  shippingFee: 50,
   currency: 'INR',
   currencySymbol: '₹',
 } as const

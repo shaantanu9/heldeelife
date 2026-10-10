@@ -65,7 +65,7 @@ export function PostPurchaseJourney({
     {
       icon: Package,
       title: 'Processing',
-      description: 'We&apos;re preparing your order',
+      description: 'We’re preparing your order',
       status: currentStep >= 1 ? 'completed' : currentStep === 0 ? 'active' : 'pending',
     },
     {

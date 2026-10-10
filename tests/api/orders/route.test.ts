@@ -50,16 +50,16 @@ describe('GET /api/orders', () => {
 
   beforeEach(async () => {
     vi.clearAllMocks()
-    
+
     // Get the mocked supabaseAdmin
     const { supabaseAdmin } = await import('@/lib/supabase/server')
     mockSupabaseFrom = supabaseAdmin.from
-    
+
     mockOrdersQuery = createMockQuery()
-    
+
     // Make select() return the query object so chaining works
     mockOrdersQuery.select.mockReturnValue(mockOrdersQuery)
-    
+
     mockSupabaseFrom.mockReturnValue(mockOrdersQuery)
   })
 
@@ -312,9 +312,13 @@ describe('GET /api/orders', () => {
 
       expect(response.status).toBe(200)
       // Should filter to only orders containing product-1
-      expect(data.orders.every((order: any) =>
-        order.order_items?.some((item: any) => item.product_id === 'product-1')
-      )).toBe(true)
+      expect(
+        data.orders.every((order: any) =>
+          order.order_items?.some(
+            (item: any) => item.product_id === 'product-1'
+          )
+        )
+      ).toBe(true)
     })
   })
 
@@ -445,7 +449,9 @@ describe('GET /api/orders', () => {
     })
 
     it('should handle unexpected errors', async () => {
-      vi.mocked(getServerSession).mockRejectedValue(new Error('Unexpected error'))
+      vi.mocked(getServerSession).mockRejectedValue(
+        new Error('Unexpected error')
+      )
 
       const request = createMockRequest()
       const response = await GET(request)
@@ -458,779 +464,298 @@ describe('GET /api/orders', () => {
 })
 
 describe('POST /api/orders', () => {
-  let mockOrdersQuery: any
-  let mockProductsQuery: any
-  let mockInventoryQuery: any
-  let mockOrderItemsQuery: any
-  let mockSupabaseFrom: any
+  const PRODUCT_A = '11111111-1111-4111-8111-111111111111'
+  const PRODUCT_B = '22222222-2222-4222-8222-222222222222'
+  let supabase: any
+  let products: any[]
+  let rpcResults: Record<string, { data: any; error: any }>
+
+  const address = {
+    name: 'Asha',
+    email: 'asha@example.com',
+    phone: '9999999999',
+    address: '1 MG Road',
+    city: 'Mumbai',
+  }
+
+  const post = (body: unknown) =>
+    POST(
+      new NextRequest('http://localhost:3000/api/orders', {
+        method: 'POST',
+        body: JSON.stringify(body),
+      })
+    )
 
   beforeEach(async () => {
     vi.clearAllMocks()
+    process.env.NEXTAUTH_SECRET = 'test-secret'
+    delete process.env.RAZORPAY_KEY_ID
+    delete process.env.RAZORPAY_KEY_SECRET
 
-    // Get the mocked supabaseAdmin
-    const { supabaseAdmin } = await import('@/lib/supabase/server')
-    mockSupabaseFrom = supabaseAdmin.from
-
-    mockOrdersQuery = {
-      insert: vi.fn().mockReturnThis(),
-      select: vi.fn().mockReturnThis(),
-      single: vi.fn(),
-      eq: vi.fn().mockReturnThis(),
-    }
-
-    mockProductsQuery = {
-      select: vi.fn().mockReturnThis(),
-      eq: vi.fn().mockReturnThis(),
-      single: vi.fn(),
-    }
-
-    mockInventoryQuery = {
-      select: vi.fn().mockReturnThis(),
-      eq: vi.fn().mockReturnThis(),
-      single: vi.fn(),
-      update: vi.fn().mockReturnThis(),
-    }
-
-    mockOrderItemsQuery = {
-      insert: vi.fn(),
-    }
-
-    mockSupabaseFrom.mockImplementation((table: string) => {
-      if (table === 'orders') {
-        return mockOrdersQuery
-      }
-      if (table === 'products') {
-        return mockProductsQuery
-      }
-      if (table === 'inventory') {
-        return mockInventoryQuery
-      }
-      if (table === 'order_items') {
-        return mockOrderItemsQuery
-      }
-      return {}
-    })
-  })
-
-  afterEach(() => {
-    vi.restoreAllMocks()
-  })
-
-  const createMockRequest = (body: any) => {
-    return new NextRequest('http://localhost:3000/api/orders', {
-      method: 'POST',
-      body: JSON.stringify(body),
-      headers: {
-        'Content-Type': 'application/json',
+    products = [
+      {
+        id: PRODUCT_A,
+        name: 'Tulsi Drops',
+        sku: 'TD',
+        price: 149,
+        image: 'https://x/a.jpg',
+        images: [],
+        is_active: true,
+        category_id: null,
       },
+      {
+        id: PRODUCT_B,
+        name: 'Kadha',
+        sku: 'KD',
+        price: 399,
+        image: null,
+        images: ['https://x/b.jpg'],
+        is_active: true,
+        category_id: 'cat-1',
+      },
+    ]
+    rpcResults = {
+      place_order: {
+        data: { id: 'order-1', order_number: 'ORD-1' },
+        error: null,
+      },
+      expire_stale_online_orders: { data: 0, error: null },
+    }
+
+    const { supabaseAdmin } = await import('@/lib/supabase/server')
+    supabase = supabaseAdmin
+    supabase.rpc = vi.fn((name: string) => {
+      const result = rpcResults[name] ?? { data: null, error: null }
+      const p: any = Promise.resolve(result)
+      return p
     })
-  }
-
-  describe('Authentication', () => {
-    it('should return 401 if user is not authenticated', async () => {
-      vi.mocked(getServerSession).mockResolvedValue(null)
-
-      const request = createMockRequest({
-        items: [{ product_id: 'product-1', quantity: 1 }],
-        shipping_address: { name: 'John Doe', address: '123 Main St' },
-      })
-
-      const response = await POST(request)
-      const data = await response.json()
-
-      expect(response.status).toBe(401)
-      expect(data.error).toBe('Unauthorized')
+    supabase.from.mockImplementation((table: string) => {
+      const q: any = {
+        select: vi.fn().mockReturnThis(),
+        in: vi.fn(() => Promise.resolve({ data: products, error: null })),
+        eq: vi.fn().mockReturnThis(),
+        single: vi.fn(() =>
+          Promise.resolve({
+            data: { id: 'order-1', order_number: 'ORD-1', order_items: [] },
+            error: null,
+          })
+        ),
+        maybeSingle: vi.fn(() => Promise.resolve({ data: null, error: null })),
+      }
+      return q
+    })
+    ;(getServerSession as any).mockResolvedValue({
+      user: { id: 'user-1', role: 'user', email: 'asha@example.com' },
     })
   })
+
+  const placedOrder = () =>
+    supabase.rpc.mock.calls.find((c: any[]) => c[0] === 'place_order')?.[1]
 
   describe('Validation', () => {
-    beforeEach(() => {
-      vi.mocked(getServerSession).mockResolvedValue({
-        user: {
-          id: 'user-id',
-          email: 'user@example.com',
-          role: 'user',
-        },
-      } as any)
+    it('returns 400 when items are missing or empty', async () => {
+      expect((await post({ shipping_address: address })).status).toBe(400)
+      const res = await post({ items: [], shipping_address: address })
+      expect(res.status).toBe(400)
+      expect((await res.json()).error).toBe('Order items are required')
     })
 
-    it('should return 400 if items are missing', async () => {
-      const request = createMockRequest({
-        shipping_address: { name: 'John Doe', address: '123 Main St' },
+    it('returns 400 when shipping_address is missing', async () => {
+      const res = await post({
+        items: [{ product_id: PRODUCT_A, quantity: 1 }],
       })
-
-      const response = await POST(request)
-      const data = await response.json()
-
-      expect(response.status).toBe(400)
-      expect(data.error).toBe('Order items are required')
+      expect(res.status).toBe(400)
+      expect((await res.json()).error).toBe('Shipping address is required')
     })
 
-    it('should return 400 if items array is empty', async () => {
-      const request = createMockRequest({
-        items: [],
-        shipping_address: { name: 'John Doe', address: '123 Main St' },
-      })
-
-      const response = await POST(request)
-      const data = await response.json()
-
-      expect(response.status).toBe(400)
-      expect(data.error).toBe('Order items are required')
-    })
-
-    it('should return 400 if shipping_address is missing', async () => {
-      const request = createMockRequest({
-        items: [{ product_id: 'product-1', quantity: 1 }],
-      })
-
-      const response = await POST(request)
-      const data = await response.json()
-
-      expect(response.status).toBe(400)
-      expect(data.error).toBe('Shipping address is required')
-    })
-  })
-
-  describe('Product Validation', () => {
-    beforeEach(() => {
-      vi.mocked(getServerSession).mockResolvedValue({
-        user: {
-          id: 'user-id',
-          email: 'user@example.com',
-          role: 'user',
-        },
-      } as any)
-    })
-
-    it('should return 400 if product does not exist', async () => {
-      mockProductsQuery.single.mockResolvedValue({
-        data: null,
-        error: { message: 'Product not found' },
-      })
-
-      const request = createMockRequest({
-        items: [
-          {
-            product_id: 'non-existent',
-            name: 'Test Product',
-            quantity: 1,
-            price: 100,
-          },
-        ],
-        shipping_address: { name: 'John Doe', address: '123 Main St' },
-        subtotal: 100,
-      })
-
-      const response = await POST(request)
-      const data = await response.json()
-
-      expect(response.status).toBe(400)
-      expect(data.error).toContain('not found')
-    })
-
-    it('should return 400 if product is not active', async () => {
-      mockProductsQuery.single.mockResolvedValue({
-        data: {
-          id: 'product-1',
-          name: 'Test Product',
-          is_active: false,
-        },
-        error: null,
-      })
-
-      const request = createMockRequest({
-        items: [
-          {
-            product_id: 'product-1',
-            name: 'Test Product',
-            quantity: 1,
-            price: 100,
-          },
-        ],
-        shipping_address: { name: 'John Doe', address: '123 Main St' },
-        subtotal: 100,
-      })
-
-      const response = await POST(request)
-      const data = await response.json()
-
-      expect(response.status).toBe(400)
-      expect(data.error).toContain('no longer available')
-    })
-  })
-
-  describe('Inventory Validation', () => {
-    beforeEach(() => {
-      vi.mocked(getServerSession).mockResolvedValue({
-        user: {
-          id: 'user-id',
-          email: 'user@example.com',
-          role: 'user',
-        },
-      } as any)
-
-      mockProductsQuery.single.mockResolvedValue({
-        data: {
-          id: 'product-1',
-          name: 'Test Product',
-          is_active: true,
-        },
-        error: null,
-      })
-    })
-
-    it('should return 400 if insufficient stock', async () => {
-      mockInventoryQuery.single.mockResolvedValue({
-        data: {
-          quantity: 5,
-          reserved_quantity: 3,
-        },
-        error: null,
-      })
-
-      const request = createMockRequest({
-        items: [
-          {
-            product_id: 'product-1',
-            name: 'Test Product',
-            quantity: 5, // Requesting 5, but only 2 available (5-3)
-            price: 100,
-          },
-        ],
-        shipping_address: { name: 'John Doe', address: '123 Main St' },
-        subtotal: 500,
-      })
-
-      const response = await POST(request)
-      const data = await response.json()
-
-      expect(response.status).toBe(400)
-      expect(data.error).toContain('Insufficient stock')
-    })
-
-    it('should allow order if sufficient stock available', async () => {
-      mockInventoryQuery.single.mockResolvedValue({
-        data: {
-          quantity: 10,
-          reserved_quantity: 2,
-        },
-        error: null,
-      })
-
-      const mockOrder = {
-        id: 'order-1',
-        user_id: 'user-id',
-        order_number: 'ORD-001',
-        status: 'pending',
-        total_amount: 100,
-      }
-
-      // Mock insert chain: insert().select().single()
-      const insertChain = {
-        select: vi.fn().mockReturnThis(),
-        single: vi.fn(),
-      }
-      mockOrdersQuery.insert.mockReturnValue(insertChain)
-      insertChain.single.mockResolvedValue({
-        data: mockOrder,
-        error: null,
-      })
-
-      mockOrderItemsQuery.insert.mockResolvedValue({
-        data: [],
-        error: null,
-      })
-
-      // Mock final select for complete order
-      const selectChain = {
-        eq: vi.fn().mockReturnThis(),
-        single: vi.fn(),
-      }
-      mockOrdersQuery.select.mockReturnValue(selectChain)
-      selectChain.single.mockResolvedValue({
-        data: {
-          ...mockOrder,
-          order_items: [],
-        },
-        error: null,
-      })
-
-      const request = createMockRequest({
-        items: [
-          {
-            product_id: 'product-1',
-            name: 'Test Product',
-            quantity: 5, // Requesting 5, 8 available (10-2)
-            price: 100,
-          },
-        ],
-        shipping_address: { name: 'John Doe', address: '123 Main St' },
-        subtotal: 500,
-      })
-
-      const response = await POST(request)
-
-      expect(response.status).toBe(201)
-    })
-  })
-
-  describe('Order Creation', () => {
-    beforeEach(() => {
-      vi.mocked(getServerSession).mockResolvedValue({
-        user: {
-          id: 'user-id',
-          email: 'user@example.com',
-          role: 'user',
-        },
-      } as any)
-
-      mockProductsQuery.single.mockResolvedValue({
-        data: {
-          id: 'product-1',
-          name: 'Test Product',
-          is_active: true,
-          image: 'https://example.com/image.jpg',
-        },
-        error: null,
-      })
-
-      mockInventoryQuery.single.mockResolvedValue({
-        data: {
-          id: 'inventory-1',
-          quantity: 10,
-          reserved_quantity: 0,
-        },
-        error: null,
-      })
-
-      // Setup insert chain for orders: insert().select().single()
-      const insertSelectChain = {
-        select: vi.fn().mockReturnThis(),
-        single: vi.fn(),
-      }
-      mockOrdersQuery.insert.mockReturnValue(insertSelectChain)
-
-      // Setup select chain for fetching complete order: select().eq().single()
-      const selectEqChain = {
-        eq: vi.fn().mockReturnThis(),
-        single: vi.fn(),
-      }
-      mockOrdersQuery.select.mockReturnValue(selectEqChain)
-    })
-
-    it('should create order successfully', async () => {
-      const mockOrder = {
-        id: 'order-1',
-        user_id: 'user-id',
-        order_number: 'ORD-001',
-        status: 'pending',
-        payment_status: 'pending',
-        total_amount: 1000,
-        subtotal: 900,
-        tax_amount: 50,
-        shipping_amount: 50,
-        discount_amount: 0,
-      }
-
-      // Mock insert().select().single() chain
-      const insertChain = mockOrdersQuery.insert()
-      insertChain.single.mockResolvedValue({
-        data: mockOrder,
-        error: null,
-      })
-
-      mockOrderItemsQuery.insert.mockResolvedValue({
-        data: [],
-        error: null,
-      })
-
-      // Mock select().eq().single() chain for final order fetch
-      const selectChain = mockOrdersQuery.select()
-      selectChain.single.mockResolvedValue({
-        data: {
-          ...mockOrder,
-          order_items: [
-            {
-              id: 'item-1',
-              product_id: 'product-1',
-              product_name: 'Test Product',
-              quantity: 1,
-              unit_price: 900,
-              total_price: 900,
-            },
-          ],
-        },
-        error: null,
-      })
-
-      const request = createMockRequest({
-        items: [
-          {
-            product_id: 'product-1',
-            name: 'Test Product',
-            quantity: 1,
-            price: 900,
-          },
-        ],
-        shipping_address: {
-          name: 'John Doe',
-          address: '123 Main St',
-          city: 'Mumbai',
-          state: 'Maharashtra',
-          pincode: '400001',
-        },
-        subtotal: 900,
-        tax_amount: 50,
-        shipping_amount: 50,
-        payment_method: 'cod',
-      })
-
-      const response = await POST(request)
-      const data = await response.json()
-
-      expect(response.status).toBe(201)
-      expect(data.order).toBeDefined()
-      expect(data.order.id).toBe('order-1')
-      expect(mockOrdersQuery.insert).toHaveBeenCalled()
-    })
-
-    it('should use billing_address if provided, otherwise use shipping_address', async () => {
-      const mockOrder = {
-        id: 'order-1',
-        user_id: 'user-id',
-        order_number: 'ORD-001',
-        status: 'pending',
-        payment_status: 'pending',
-        total_amount: 1000,
-        subtotal: 1000,
-      }
-
-      // Mock insert().select().single() chain
-      const insertChain = mockOrdersQuery.insert()
-      insertChain.single.mockResolvedValue({
-        data: mockOrder,
-        error: null,
-      })
-
-      mockOrderItemsQuery.insert.mockResolvedValue({
-        data: [],
-        error: null,
-      })
-
-      // Mock select().eq().single() chain for final order fetch
-      const selectChain = mockOrdersQuery.select()
-      selectChain.single.mockResolvedValue({
-        data: { ...mockOrder, order_items: [] },
-        error: null,
-      })
-
-      const billingAddress = {
-        name: 'John Doe',
-        address: '456 Billing St',
-        city: 'Mumbai',
-      }
-
-      const request = createMockRequest({
-        items: [
-          {
-            product_id: 'product-1',
-            name: 'Test Product',
-            quantity: 1,
-            price: 1000,
-          },
-        ],
-        shipping_address: {
-          name: 'John Doe',
-          address: '123 Main St',
-        },
-        billing_address: billingAddress,
-        subtotal: 1000,
-      })
-
-      await POST(request)
-
-      expect(mockOrdersQuery.insert).toHaveBeenCalledWith(
-        expect.objectContaining({
-          billing_address: billingAddress,
+    it('rejects non-integer or non-positive quantities', async () => {
+      for (const quantity of [0, -2, 1.5]) {
+        const res = await post({
+          items: [{ product_id: PRODUCT_A, quantity }],
+          shipping_address: address,
         })
-      )
+        expect(res.status).toBe(400)
+      }
     })
 
-    it('should create order items with product images', async () => {
-      const mockOrder = {
-        id: 'order-1',
-        user_id: 'user-id',
-        order_number: 'ORD-001',
-        status: 'pending',
-        total_amount: 1000,
-      }
-
-      // Mock insert().select().single() chain
-      const insertChain = mockOrdersQuery.insert()
-      insertChain.single.mockResolvedValue({
-        data: mockOrder,
-        error: null,
+    it('requires contact details for guest checkout', async () => {
+      ;(getServerSession as any).mockResolvedValue(null)
+      const res = await post({
+        items: [{ product_id: PRODUCT_A, quantity: 1 }],
+        shipping_address: { name: 'Guest' },
       })
-
-      mockOrderItemsQuery.insert.mockResolvedValue({
-        data: [],
-        error: null,
-      })
-
-      // Mock select().eq().single() chain for final order fetch
-      const selectChain = mockOrdersQuery.select()
-      selectChain.single.mockResolvedValue({
-        data: { ...mockOrder, order_items: [] },
-        error: null,
-      })
-
-      const request = createMockRequest({
-        items: [
-          {
-            product_id: 'product-1',
-            name: 'Test Product',
-            quantity: 1,
-            price: 1000,
-            image: 'https://example.com/item-image.jpg',
-          },
-        ],
-        shipping_address: { name: 'John Doe', address: '123 Main St' },
-        subtotal: 1000,
-      })
-
-      await POST(request)
-
-      expect(mockOrderItemsQuery.insert).toHaveBeenCalledWith(
-        expect.arrayContaining([
-          expect.objectContaining({
-            product_image: 'https://example.com/item-image.jpg',
-          }),
-        ])
-      )
+      expect(res.status).toBe(400)
     })
 
-    it('should reserve inventory for COD orders', async () => {
-      const mockOrder = {
-        id: 'order-1',
-        user_id: 'user-id',
-        order_number: 'ORD-001',
-        status: 'pending',
-        total_amount: 1000,
-      }
-
-      // Mock insert().select().single() chain
-      const insertChain = mockOrdersQuery.insert()
-      insertChain.single.mockResolvedValue({
-        data: mockOrder,
-        error: null,
+    it('returns 400 for unknown or inactive products', async () => {
+      products = products.filter((p) => p.id !== PRODUCT_B)
+      let res = await post({
+        items: [{ product_id: PRODUCT_B, quantity: 1 }],
+        shipping_address: address,
       })
+      expect(res.status).toBe(400)
 
-      mockOrderItemsQuery.insert.mockResolvedValue({
-        data: [],
-        error: null,
+      products[0].is_active = false
+      res = await post({
+        items: [{ product_id: PRODUCT_A, quantity: 1 }],
+        shipping_address: address,
       })
+      expect(res.status).toBe(400)
+      expect((await res.json()).error).toMatch(/no longer available/)
+    })
 
-      // Mock select().eq().single() chain for final order fetch
-      const selectChain = mockOrdersQuery.select()
-      selectChain.single.mockResolvedValue({
-        data: { ...mockOrder, order_items: [] },
-        error: null,
+    it('refuses online payment when the gateway is not configured', async () => {
+      const res = await post({
+        items: [{ product_id: PRODUCT_A, quantity: 1 }],
+        shipping_address: address,
+        payment_method: 'online',
       })
-
-      // Setup update chain for inventory: update().eq()
-      const updateEqChain = {
-        eq: vi.fn().mockResolvedValue({
-          data: {},
-          error: null,
-        }),
-      }
-      mockInventoryQuery.update.mockReturnValue(updateEqChain)
-
-      const request = createMockRequest({
-        items: [
-          {
-            product_id: 'product-1',
-            name: 'Test Product',
-            quantity: 2,
-            price: 500,
-          },
-        ],
-        shipping_address: { name: 'John Doe', address: '123 Main St' },
-        subtotal: 1000,
-        payment_method: 'cod',
-      })
-
-      await POST(request)
-
-      // Verify update was called (it returns a chain, so we check the chain was created)
-      expect(mockInventoryQuery.update).toHaveBeenCalled()
+      expect(res.status).toBe(400)
+      expect(supabase.rpc).not.toHaveBeenCalledWith(
+        'place_order',
+        expect.anything()
+      )
     })
   })
 
-  describe('Error Handling', () => {
-    beforeEach(() => {
-      vi.mocked(getServerSession).mockResolvedValue({
-        user: {
-          id: 'user-id',
-          email: 'user@example.com',
-          role: 'user',
-        },
-      } as any)
+  describe('Server-side pricing', () => {
+    it('ignores client-sent prices and totals', async () => {
+      const res = await post({
+        items: [{ product_id: PRODUCT_A, quantity: 2, price: 1 }],
+        shipping_address: address,
+        subtotal: 1,
+        total_amount: 1,
+        discount_amount: 500,
+      })
+      expect(res.status).toBe(201)
+      const { p_order, p_items } = placedOrder()
+      expect(p_items[0]).toMatchObject({
+        unit_price: 149,
+        quantity: 2,
+        total_price: 298,
+      })
+      expect(p_order.subtotal).toBe(298)
+      expect(p_order.discount_amount).toBe(0)
+      expect(p_order.shipping_amount).toBe(50) // below ₹500
+      expect(p_order.total_amount).toBe(348)
+    })
 
-      mockProductsQuery.single.mockResolvedValue({
+    it('gives free shipping at ₹500 and merges duplicate lines', async () => {
+      await post({
+        items: [
+          { product_id: PRODUCT_B, quantity: 1 },
+          { product_id: PRODUCT_A, quantity: 1 },
+          { product_id: PRODUCT_A, quantity: 1 },
+        ],
+        shipping_address: address,
+      })
+      const { p_order, p_items } = placedOrder()
+      expect(p_items).toHaveLength(2)
+      expect(p_order.subtotal).toBe(697)
+      expect(p_order.shipping_amount).toBe(0)
+      expect(p_order.total_amount).toBe(697)
+      // GST is reported as included, not added on top
+      expect(p_order.tax_amount).toBeCloseTo(697 - 697 / 1.18, 2)
+    })
+
+    it('applies a server-validated coupon discount', async () => {
+      rpcResults.validate_coupon = {
         data: {
-          id: 'product-1',
-          name: 'Test Product',
-          is_active: true,
+          valid: true,
+          coupon_id: 'c1',
+          code: 'SAVE50',
+          name: 'Save',
+          discount_amount: 50,
         },
         error: null,
+      }
+      await post({
+        items: [{ product_id: PRODUCT_B, quantity: 2 }],
+        shipping_address: address,
+        coupon_code: 'save50',
       })
+      const { p_order } = placedOrder()
+      expect(p_order.coupon_id).toBe('c1')
+      expect(p_order.discount_amount).toBe(50)
+      expect(p_order.total_amount).toBe(748)
+    })
 
-      mockInventoryQuery.single.mockResolvedValue({
+    it('rejects an invalid coupon', async () => {
+      rpcResults.validate_coupon = {
+        data: { valid: false, error: 'Invalid or expired coupon code' },
+        error: null,
+      }
+      const res = await post({
+        items: [{ product_id: PRODUCT_A, quantity: 1 }],
+        shipping_address: address,
+        coupon_code: 'NOPE',
+      })
+      expect(res.status).toBe(400)
+      expect((await res.json()).error).toBe('Invalid or expired coupon code')
+    })
+  })
+
+  describe('Atomic placement', () => {
+    it('maps OUT_OF_STOCK from place_order to 409', async () => {
+      rpcResults.place_order = {
+        data: null,
+        error: { message: 'OUT_OF_STOCK:Tulsi Drops:3' },
+      }
+      const res = await post({
+        items: [{ product_id: PRODUCT_A, quantity: 5 }],
+        shipping_address: address,
+      })
+      expect(res.status).toBe(409)
+      expect((await res.json()).error).toBe(
+        'Insufficient stock for Tulsi Drops. Available: 3'
+      )
+    })
+
+    it('maps COUPON_EXHAUSTED to 409', async () => {
+      rpcResults.validate_coupon = {
         data: {
-          quantity: 10,
-          reserved_quantity: 0,
+          valid: true,
+          coupon_id: 'c1',
+          code: 'ONCE',
+          name: 'Once',
+          discount_amount: 10,
         },
         error: null,
-      })
-    })
-
-    it('should return 500 if order creation fails', async () => {
-      mockOrdersQuery.single.mockResolvedValue({
+      }
+      rpcResults.place_order = {
         data: null,
-        error: { message: 'Database error' },
+        error: { message: 'COUPON_EXHAUSTED' },
+      }
+      const res = await post({
+        items: [{ product_id: PRODUCT_A, quantity: 1 }],
+        shipping_address: address,
+        coupon_code: 'ONCE',
       })
-
-      const request = createMockRequest({
-        items: [
-          {
-            product_id: 'product-1',
-            name: 'Test Product',
-            quantity: 1,
-            price: 1000,
-          },
-        ],
-        shipping_address: { name: 'John Doe', address: '123 Main St' },
-        subtotal: 1000,
-      })
-
-      const response = await POST(request)
-      const data = await response.json()
-
-      expect(response.status).toBe(500)
-      expect(data.error).toBe('Failed to create order')
+      expect(res.status).toBe(409)
     })
 
-    it('should rollback order if order items creation fails', async () => {
-      const mockOrder = {
-        id: 'order-1',
-        user_id: 'user-id',
-        order_number: 'ORD-001',
-        status: 'pending',
-        total_amount: 1000,
-      }
-
-      // Mock insert().select().single() chain
-      const insertChain = mockOrdersQuery.insert()
-      insertChain.single.mockResolvedValue({
-        data: mockOrder,
-        error: null,
+    it('returns 500 on unexpected database errors', async () => {
+      rpcResults.place_order = { data: null, error: { message: 'boom' } }
+      const res = await post({
+        items: [{ product_id: PRODUCT_A, quantity: 1 }],
+        shipping_address: address,
       })
-
-      mockOrderItemsQuery.insert.mockResolvedValue({
-        data: null,
-        error: { message: 'Failed to insert items' },
-      })
-
-      // Setup delete chain for rollback: delete().eq()
-      const deleteEqChain = {
-        eq: vi.fn().mockResolvedValue({
-          data: {},
-          error: null,
-        }),
-      }
-      const deleteQuery = {
-        delete: vi.fn().mockReturnValue(deleteEqChain),
-      }
-
-      // Track calls to properly return delete query when needed
-      // The flow is:
-      // 1. from('products') - check product exists
-      // 2. from('inventory') - check inventory
-      // 3. from('orders') - insert order
-      // 4. from('order_items') - insert items (fails)
-      // 5. from('orders') - delete order (rollback)
-      let ordersCallCount = 0
-      mockSupabaseFrom.mockImplementation((table: string) => {
-        if (table === 'orders') {
-          ordersCallCount++
-          // First call: insert order
-          if (ordersCallCount === 1) {
-            return mockOrdersQuery
-          }
-          // Second call: delete order (rollback)
-          if (ordersCallCount === 2) {
-            return deleteQuery
-          }
-          return mockOrdersQuery
-        }
-        if (table === 'order_items') {
-          return mockOrderItemsQuery
-        }
-        if (table === 'products') {
-          return mockProductsQuery
-        }
-        if (table === 'inventory') {
-          return mockInventoryQuery
-        }
-        return deleteQuery
-      })
-
-      const request = createMockRequest({
-        items: [
-          {
-            product_id: 'product-1',
-            name: 'Test Product',
-            quantity: 1,
-            price: 1000,
-          },
-        ],
-        shipping_address: { name: 'John Doe', address: '123 Main St' },
-        subtotal: 1000,
-      })
-
-      const response = await POST(request)
-      const data = await response.json()
-
-      expect(response.status).toBe(500)
-      expect(data.error).toBe('Failed to create order items')
-      // Verify rollback was attempted
-      expect(deleteQuery.delete).toHaveBeenCalled()
+      expect(res.status).toBe(500)
     })
 
-    it('should handle unexpected errors', async () => {
-      vi.mocked(getServerSession).mockRejectedValue(new Error('Unexpected error'))
-
-      const request = createMockRequest({
-        items: [
-          {
-            product_id: 'product-1',
-            name: 'Test Product',
-            quantity: 1,
-            price: 1000,
-          },
-        ],
-        shipping_address: { name: 'John Doe', address: '123 Main St' },
-        subtotal: 1000,
+    it('creates the order and returns a guest access token', async () => {
+      ;(getServerSession as any).mockResolvedValue(null)
+      const res = await post({
+        items: [{ product_id: PRODUCT_A, quantity: 1 }],
+        shipping_address: address,
       })
-
-      const response = await POST(request)
-      const data = await response.json()
-
-      expect(response.status).toBe(500)
-      expect(data.error).toBe('Internal server error')
+      expect(res.status).toBe(201)
+      const body = await res.json()
+      expect(body.order.id).toBe('order-1')
+      const { verifyOrderAccessToken } =
+        await import('@/lib/commerce/order-access')
+      expect(verifyOrderAccessToken('order-1', body.access_token)).toBe(true)
+      expect(placedOrder().p_order.user_id).toBeNull()
     })
   })
 })
-

@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Calendar, Clock, User, Phone, Mail } from 'lucide-react'
 import { useState } from 'react'
+import { toast } from 'sonner'
 
 export default function ServicePage() {
   const [formData, setFormData] = useState({
@@ -27,10 +28,45 @@ export default function ServicePage() {
     'Follow-up Consultation',
   ]
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const [isSubmitting, setIsSubmitting] = useState(false)
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    // Handle form submission
-    alert("Consultation request submitted! We'll contact you soon.")
+    if (isSubmitting) return
+    setIsSubmitting(true)
+    try {
+      const res = await fetch('/api/inquiries', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type: 'consultation', ...formData }),
+      })
+      const data = await res.json().catch(() => null)
+      if (!res.ok) {
+        throw new Error(
+          data?.error || 'Something went wrong. Please try again.'
+        )
+      }
+      toast.success('Consultation request submitted!', {
+        description: "We'll contact you soon.",
+      })
+      setFormData({
+        name: '',
+        email: '',
+        phone: '',
+        service: '',
+        date: '',
+        time: '',
+        message: '',
+      })
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : 'Something went wrong. Please try again.'
+      )
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   return (
@@ -196,9 +232,10 @@ export default function ServicePage() {
                 <Button
                   type="submit"
                   size="lg"
+                  disabled={isSubmitting}
                   className="w-full rounded-lg bg-orange-600 hover:bg-orange-700 text-white font-semibold shadow-md hover:shadow-lg transition-all duration-200 mt-6"
                 >
-                  Book Consultation
+                  {isSubmitting ? 'Booking...' : 'Book Consultation'}
                 </Button>
               </form>
             </CardContent>

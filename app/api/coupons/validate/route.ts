@@ -1,126 +1,110 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
+import { z } from 'zod'
 import { authOptions } from '@/lib/auth-options'
 import { supabaseAdmin } from '@/lib/supabase/server'
+import { rateLimit, getRateLimitIdentifier } from '@/lib/rate-limit'
+import { validateCouponForOrder } from '@/lib/commerce/coupons'
 
-// POST /api/coupons/validate - Validate coupon code
+const bodySchema = z.object({
+  code: z.string().trim().min(1, 'Coupon code is required').max(50),
+  // Preferred: the cart lines, so the subtotal is priced from the database
+  items: z
+    .array(
+      z.object({
+        product_id: z.string().uuid(),
+        quantity: z.coerce.number().int().min(1).max(100),
+      })
+    )
+    .max(50)
+    .optional(),
+  // Fallback for older clients
+  subtotal: z.coerce.number().min(0).optional(),
+})
+
+// POST /api/coupons/validate - Validate a coupon for the current cart.
+// Guests may validate coupons too (guest checkout is supported). The
+// authoritative check happens again when the order is placed.
 export async function POST(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
 
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-
-    const body = await request.json()
-    const { code, subtotal } = body
-
-    if (!code) {
+    const limiter = await rateLimit(
+      `coupon-validate:${session?.user?.id || getRateLimitIdentifier(request)}`,
+      20,
+      600
+    )
+    if (!limiter.success) {
       return NextResponse.json(
-        { error: 'Coupon code is required' },
-        { status: 400 }
-      )
-    }
-
-    // Get coupon
-    const { data: coupon, error } = await supabaseAdmin
-      .from('coupons')
-      .select('*')
-      .eq('code', code.toUpperCase())
-      .eq('is_active', true)
-      .single()
-
-    if (error || !coupon) {
-      return NextResponse.json(
-        { error: 'Invalid coupon code' },
-        { status: 404 }
-      )
-    }
-
-    // Check validity dates
-    const now = new Date()
-    if (new Date(coupon.valid_from) > now) {
-      return NextResponse.json(
-        { error: 'Coupon not yet valid' },
-        { status: 400 }
-      )
-    }
-
-    if (coupon.valid_until && new Date(coupon.valid_until) < now) {
-      return NextResponse.json({ error: 'Coupon has expired' }, { status: 400 })
-    }
-
-    // Check minimum purchase amount
-    if (subtotal && coupon.min_purchase_amount > subtotal) {
-      return NextResponse.json(
+        { error: 'Too many attempts. Please try again later.' },
         {
-          error: `Minimum purchase amount of Rs. ${coupon.min_purchase_amount} required`,
-        },
-        { status: 400 }
-      )
-    }
-
-    // Check usage limit
-    if (coupon.usage_limit && coupon.used_count >= coupon.usage_limit) {
-      return NextResponse.json(
-        { error: 'Coupon usage limit reached' },
-        { status: 400 }
-      )
-    }
-
-    // Check if user already used this coupon
-    const { data: existingUsage } = await supabaseAdmin
-      .from('coupon_usage')
-      .select('id')
-      .eq('coupon_id', coupon.id)
-      .eq('user_id', session.user.id)
-      .limit(1)
-
-    if (existingUsage && existingUsage.length > 0) {
-      return NextResponse.json(
-        { error: 'You have already used this coupon' },
-        { status: 400 }
-      )
-    }
-
-    // Calculate discount
-    let discountAmount = 0
-    if (subtotal) {
-      if (coupon.discount_type === 'percentage') {
-        discountAmount = (subtotal * coupon.discount_value) / 100
-        if (coupon.max_discount_amount) {
-          discountAmount = Math.min(discountAmount, coupon.max_discount_amount)
+          status: 429,
+          headers: {
+            'Retry-After': String(
+              Math.max(1, Math.ceil((limiter.reset - Date.now()) / 1000))
+            ),
+          },
         }
-      } else {
-        discountAmount = coupon.discount_value
-      }
+      )
+    }
+
+    const parsed = bodySchema.safeParse(await request.json().catch(() => null))
+    if (!parsed.success) {
+      return NextResponse.json(
+        { error: parsed.error.issues[0]?.message || 'Invalid request' },
+        { status: 400 }
+      )
+    }
+    const { code, items, subtotal: clientSubtotal } = parsed.data
+
+    let subtotal = clientSubtotal ?? 0
+    let productIds: string[] = []
+    let categoryIds: string[] = []
+
+    if (items?.length) {
+      const { data: products } = await supabaseAdmin
+        .from('products')
+        .select('id, price, category_id')
+        .in(
+          'id',
+          items.map((i) => i.product_id)
+        )
+      const byId = new Map((products || []).map((p) => [p.id, p]))
+      subtotal = items.reduce(
+        (sum, item) =>
+          sum + Number(byId.get(item.product_id)?.price || 0) * item.quantity,
+        0
+      )
+      productIds = items.map((i) => i.product_id)
+      categoryIds = (products || [])
+        .map((p) => p.category_id)
+        .filter((c): c is string => Boolean(c))
+    }
+
+    const result = await validateCouponForOrder(code, {
+      userId: session?.user?.id ?? null,
+      subtotal,
+      productIds,
+      categoryIds,
+    })
+
+    if (!result.valid) {
+      return NextResponse.json(
+        { valid: false, error: result.error },
+        { status: 400 }
+      )
     }
 
     return NextResponse.json({
       valid: true,
-      coupon: {
-        id: coupon.id,
-        code: coupon.code,
-        name: coupon.name,
-        discount_type: coupon.discount_type,
-        discount_value: coupon.discount_value,
-      },
-      discount_amount: discountAmount,
+      coupon: { id: result.couponId, code: result.code, name: result.name },
+      discount_amount: result.discount,
     })
   } catch (error) {
-    console.error('Error in POST /api/coupons/validate:', error)
+    console.error('Error validating coupon:', error)
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
     )
   }
 }
-
-
-
-
-
-
-
-
-

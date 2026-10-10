@@ -31,6 +31,8 @@ export interface OrderStatusHistory {
 
 export interface Order {
   id: string
+  /** Only present on the response to order creation */
+  access_token?: string
   order_number?: string
   user_id: string
   shipping_address: any
@@ -62,22 +64,17 @@ export interface Order {
   updated_at: string
 }
 
+// The client only states what it wants; the server prices everything from
+// the database (see app/api/orders/route.ts).
 export interface CreateOrderInput {
   items: Array<{
     product_id: string
-    name: string
-    sku?: string
-    price: number
     quantity: number
   }>
   shipping_address: any
   billing_address?: any
-  payment_method?: string
-  subtotal: number
-  tax_amount?: number
-  shipping_amount?: number
-  discount_amount?: number
-  coupon_id?: string
+  payment_method?: 'cod' | 'online'
+  coupon_code?: string
   notes?: string
 }
 
@@ -86,14 +83,23 @@ export interface OrderFilters {
 }
 
 // Get all orders
-export function useOrders(filters?: OrderFilters) {
+export function useOrders(
+  filters?: OrderFilters,
+  options: { enabled?: boolean } = {}
+) {
   return useQuery({
+    // Signed-out visitors have no orders; don't hit the API (401) for them
+    enabled: options.enabled ?? true,
     queryKey: queryKeys.orders.list(filters),
     queryFn: async () => {
-      const response = await apiClient.get<{ orders: Order[] }>(
-        '/orders',
-        filters as Record<string, string | number | boolean | null | undefined>
-      )
+      // Customer-facing list: always the caller's own orders (admins included)
+      const response = await apiClient.get<{ orders: Order[] }>('/orders', {
+        ...(filters as Record<
+          string,
+          string | number | boolean | null | undefined
+        >),
+        scope: 'mine',
+      })
       // Ensure we always return an array, never undefined
       return response?.orders || []
     },
@@ -120,8 +126,12 @@ export function useCreateOrder() {
 
   return useMutation({
     mutationFn: async (data: CreateOrderInput) => {
-      const response = await apiClient.post<{ order: Order }>('/orders', data)
-      return response.order
+      const response = await apiClient.post<{
+        order: Order
+        access_token: string
+      }>('/orders', data)
+      // access_token lets guests pay for / view this order without a session
+      return { ...response.order, access_token: response.access_token }
     },
     onSuccess: (order) => {
       // Add to cache

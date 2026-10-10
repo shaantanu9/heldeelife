@@ -1,16 +1,30 @@
-import { Metadata } from 'next'
+import { buildMetadata } from '@/lib/seo/metadata'
+import { JsonLd } from '@/lib/seo/json-ld'
+import { webPageSchema } from '@/lib/seo/schema'
 
-export const metadata: Metadata = {
-  title: 'Terms of Service | heldeelife',
+export const metadata = buildMetadata({
+  title: 'Terms of Service',
   description:
-    'Read heldeelife&apos;s Terms of Service to understand the rules and regulations for using our website and services.',
-}
+    'Read heldeelife’s Terms of Service covering use of our website, orders, payments and services.',
+  path: '/terms',
+})
 
 export const dynamic = 'force-static'
 
 export default function TermsOfServicePage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-orange-50/40 py-8 md:py-16">
+      <JsonLd
+        data={webPageSchema({
+          path: '/terms',
+          name: 'Terms of Service',
+          type: 'WebPage',
+          breadcrumb: [
+            { name: 'Home', path: '/' },
+            { name: 'Terms of Service', path: '/terms' },
+          ],
+        })}
+      />
       <div className="container px-4">
         <div className="max-w-4xl mx-auto">
           <h1 className="text-4xl font-bold text-gray-900 mb-4">

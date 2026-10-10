@@ -52,7 +52,9 @@ export function calculateSavings(
 /**
  * Format price with Indian number formatting
  */
-export function formatPrice(price: number, useCharmPricing = true): string {
+// Charm pricing is opt-in only: displaying ₹149.99 for a product that is
+// charged at ₹149 misstates the price.
+export function formatPrice(price: number, useCharmPricing = false): string {
   const finalPrice = useCharmPricing ? applyCharmPricing(price) : price
   return new Intl.NumberFormat('en-IN', {
     style: 'currency',
@@ -75,7 +77,7 @@ export function getPriceDisplay(
   savings?: string
   discount?: number
 } {
-  const current = formatPrice(price, true)
+  const current = formatPrice(price)
 
   if (!compareAtPrice || compareAtPrice <= price) {
     return { current }

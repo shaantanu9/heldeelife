@@ -338,6 +338,7 @@ export function ImageUpload({
                 onClick={handleRemove}
                 disabled={uploading || disabled}
                 className="shadow-md"
+                aria-label="Remove image"
               >
                 <X className="h-4 w-4" />
               </Button>

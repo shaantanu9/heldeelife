@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { computeOrderTotals } from '@/lib/commerce/totals'
 import { useCart } from '@/contexts/cart-context'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -45,8 +46,9 @@ export function StickyCartButton() {
 
   if (totalItems === 0) return null
 
-  const tax = totalPrice * 0.18
-  const finalTotal = totalPrice + tax
+  // Same totals as cart, checkout and the server (GST-inclusive prices)
+  const totals = computeOrderTotals(totalPrice)
+  const finalTotal = totals.total
 
   return (
     <div
@@ -95,12 +97,3 @@ export function StickyCartButton() {
     </div>
   )
 }
-
-
-
-
-
-
-
-
-

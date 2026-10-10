@@ -102,8 +102,9 @@ CREATE INDEX IF NOT EXISTS idx_password_reset_attempts_requested_at ON password_
 CREATE INDEX IF NOT EXISTS idx_password_reset_attempts_user_status ON password_reset_attempts(user_id, status, requested_at DESC);
 
 -- Composite index for recent reset attempts (rate limiting queries)
-CREATE INDEX IF NOT EXISTS idx_password_reset_attempts_recent ON password_reset_attempts(email, requested_at DESC) 
-  WHERE requested_at > now() - INTERVAL '24 hours';
+-- (No now()-based predicate: Postgres rejects non-IMMUTABLE functions in
+-- index predicates, which made this migration fail.)
+CREATE INDEX IF NOT EXISTS idx_password_reset_attempts_recent ON password_reset_attempts(email, requested_at DESC);
 
 -- ============================================
 -- ROW LEVEL SECURITY (RLS)

@@ -26,7 +26,14 @@ import {
   CardTitle,
 } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { ArrowLeft, Save, Eye, Loader2, ExternalLink, Monitor } from 'lucide-react'
+import {
+  ArrowLeft,
+  Save,
+  Eye,
+  Loader2,
+  ExternalLink,
+  Monitor,
+} from 'lucide-react'
 import Link from 'next/link'
 import { toast } from 'sonner'
 import { generateSlug, generateKeywords } from '@/lib/utils/blog'
@@ -195,7 +202,23 @@ export function EditBlogPostClient() {
     }, 30000) // Auto-save every 30 seconds
 
     return () => clearInterval(autoSaveInterval)
-  }, [post, postId, title, slug, excerpt, content, featuredImage, categoryId, postStatus, metaTitle, metaDescription, metaKeywords, selectedTags, saving, autoSaving])
+  }, [
+    post,
+    postId,
+    title,
+    slug,
+    excerpt,
+    content,
+    featuredImage,
+    categoryId,
+    postStatus,
+    metaTitle,
+    metaDescription,
+    metaKeywords,
+    selectedTags,
+    saving,
+    autoSaving,
+  ])
 
   async function fetchPost() {
     try {
@@ -569,8 +592,12 @@ export function EditBlogPostClient() {
               metaDescription={metaDescription || ''}
               content={content || ''}
               featuredImage={featuredImage || ''}
-              tags={tags.filter((t) => selectedTags.includes(t.id)).map((t) => t.name)}
-              category={categories.find((c) => c.id === watch('category_id'))?.name}
+              tags={tags
+                .filter((t) => selectedTags.includes(t.id))
+                .map((t) => t.name)}
+              category={
+                categories.find((c) => c.id === watch('category_id'))?.name
+              }
               slug={watch('slug') || ''}
             />
 
@@ -608,25 +635,24 @@ export function EditBlogPostClient() {
         </div>
 
         <div className="flex items-center justify-end gap-4">
-            <Link href="/admin/blog">
-              <Button type="button" variant="outline">
-                Cancel
-              </Button>
-            </Link>
-            <Button type="submit" disabled={saving}>
-              {saving ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Saving...
-                </>
-              ) : (
-                <>
-                  <Save className="h-4 w-4 mr-2" />
-                  Save Changes
-                </>
-              )}
+          <Link href="/admin/blog">
+            <Button type="button" variant="outline">
+              Cancel
             </Button>
-          </div>
+          </Link>
+          <Button type="submit" disabled={saving}>
+            {saving ? (
+              <>
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                Saving...
+              </>
+            ) : (
+              <>
+                <Save className="h-4 w-4 mr-2" />
+                Save Changes
+              </>
+            )}
+          </Button>
         </div>
       </form>
     </div>

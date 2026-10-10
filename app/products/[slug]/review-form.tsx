@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useRef } from 'react'
 import { useSession } from 'next-auth/react'
+import { usePathname, useRouter } from 'next/navigation'
 import Image from 'next/image'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -40,6 +41,18 @@ const RATING_LABELS: Record<number, { label: string; color: string }> = {
   5: { label: 'Excellent', color: 'text-green-700' },
 }
 
+function buildReviewComment(
+  comment: string,
+  pros: string,
+  cons: string
+): string | null {
+  const parts = [comment.trim()]
+  if (pros.trim()) parts.push(`Pros: ${pros.trim()}`)
+  if (cons.trim()) parts.push(`Cons: ${cons.trim()}`)
+  const text = parts.filter(Boolean).join('\n\n')
+  return text || null
+}
+
 export function ReviewForm({
   productId,
   productName,
@@ -48,6 +61,11 @@ export function ReviewForm({
   onCancel,
 }: ReviewFormProps) {
   const { data: session } = useSession()
+  const router = useRouter()
+  const pathname = usePathname()
+  const signInHref = `/auth/signin?callbackUrl=${encodeURIComponent(
+    pathname || '/'
+  )}`
   const [currentStep, setCurrentStep] = useState(1)
   const [rating, setRating] = useState(0)
   const [hoveredRating, setHoveredRating] = useState(0)
@@ -147,6 +165,7 @@ export function ReviewForm({
 
       if (!session?.user) {
         toast.error('Please sign in to submit a review')
+        router.push(signInHref)
         return
       }
 
@@ -174,7 +193,9 @@ export function ReviewForm({
             order_id: orderId,
             rating,
             title: title.trim() || null,
-            comment: comment.trim() || null,
+            // product_reviews has no pros/cons columns, so fold them into
+            // the comment text rather than dropping what the user wrote.
+            comment: buildReviewComment(comment, pros, cons),
             review_images: reviewImages.length > 0 ? reviewImages : null,
           }),
         })
@@ -212,10 +233,14 @@ export function ReviewForm({
       rating,
       title,
       comment,
+      pros,
+      cons,
       reviewImages,
       productId,
       orderId,
       onSuccess,
+      router,
+      signInHref,
     ]
   )
 
@@ -237,7 +262,7 @@ export function ReviewForm({
             size="lg"
             className="bg-orange-600 hover:bg-orange-700"
           >
-            <a href="/auth/signin">Sign In to Continue</a>
+            <a href={signInHref}>Sign In to Continue</a>
           </Button>
         </CardContent>
       </Card>

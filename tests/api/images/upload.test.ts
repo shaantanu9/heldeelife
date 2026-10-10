@@ -1,3 +1,6 @@
+// @vitest-environment node
+// Node environment: jsdom File objects do not survive the undici FormData
+// round-trip used by NextRequest (they arrive as a few bytes of text).
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { NextRequest } from 'next/server'
 import { POST } from '@/app/api/images/upload/route'
@@ -48,16 +51,9 @@ describe('POST /api/images/upload', () => {
   }
 
   const createMockFile = (name: string, type: string, size: number) => {
-    // Create a blob with the specified size
-    const content = new Array(size).fill('a').join('')
-    const blob = new Blob([content], { type })
-    const file = new File([blob], name, { type })
-    // Ensure the file has the correct size
-    Object.defineProperty(file, 'size', {
-      value: size,
-      writable: false,
-    })
-    return file
+    // Use real bytes so the size survives the FormData round-trip
+    // (a patched `size` property is lost when the request body is parsed).
+    return new File([new Uint8Array(size)], name, { type })
   }
 
   describe('Authentication', () => {
@@ -91,6 +87,59 @@ describe('POST /api/images/upload', () => {
 
       expect(response.status).toBe(403)
       expect(data.error).toBe('Forbidden: Admin access required')
+    })
+
+    it('should return 403 if non-admin targets a non-review folder', async () => {
+      vi.mocked(getServerSession).mockResolvedValue({
+        user: { id: 'user-id', email: 'user@example.com', role: 'user' },
+      } as any)
+
+      const file = createMockFile('test.jpg', 'image/jpeg', 1024)
+      const request = createMockRequest(file, 'blog')
+
+      const response = await POST(request)
+      expect(response.status).toBe(403)
+      expect(ImageKitService.uploadImage).not.toHaveBeenCalled()
+    })
+
+    it('should allow non-admin users to upload review photos', async () => {
+      vi.mocked(getServerSession).mockResolvedValue({
+        user: { id: 'user-id', email: 'user@example.com', role: 'user' },
+      } as any)
+      vi.mocked(ImageKitService.uploadImage).mockResolvedValue({
+        fileId: 'review-file',
+        name: 'review.jpg',
+        url: 'https://ik.imagekit.io/test/review.jpg',
+        fileType: 'image/jpeg',
+      })
+
+      const file = createMockFile('review.jpg', 'image/jpeg', 1024)
+      const request = createMockRequest(file, 'reviews', 'evil,tags')
+
+      const response = await POST(request)
+      const data = await response.json()
+
+      expect(response.status).toBe(200)
+      expect(data.url).toBe('https://ik.imagekit.io/test/review.jpg')
+      expect(ImageKitService.uploadImage).toHaveBeenCalledWith(
+        expect.any(Buffer),
+        expect.any(String),
+        'reviews',
+        ['review', 'user-user-id']
+      )
+    })
+
+    it('should still validate file type for non-admin review uploads', async () => {
+      vi.mocked(getServerSession).mockResolvedValue({
+        user: { id: 'user-id', email: 'user@example.com', role: 'user' },
+      } as any)
+
+      const file = createMockFile('test.pdf', 'application/pdf', 1024)
+      const request = createMockRequest(file, 'reviews')
+
+      const response = await POST(request)
+      expect(response.status).toBe(400)
+      expect(ImageKitService.uploadImage).not.toHaveBeenCalled()
     })
   })
 

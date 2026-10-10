@@ -1,4 +1,6 @@
 import type { Metadata } from 'next'
+import { JsonLd } from '@/lib/seo/json-ld'
+import { SCHEMA_IDS } from '@/lib/seo/site'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import {
@@ -69,14 +71,6 @@ export async function generateMetadata({
 
   return {
     title: post.meta_title || post.title,
-    links: [
-      {
-        rel: 'alternate',
-        type: 'text/markdown',
-        href: markdownAlternateUrl,
-        title: `${post.title} (Markdown)`,
-      },
-    ],
     description:
       post.meta_description || post.excerpt || 'Read our latest article',
     keywords: [
@@ -95,6 +89,7 @@ export async function generateMetadata({
       images: allImages.length > 0 ? allImages : [],
       url: `${baseUrlForMetadata}/blog/${post.slug}`,
       siteName: 'heldeelife',
+      locale: 'en_IN',
       ...(post.category && {
         section: post.category.name,
       }),
@@ -114,6 +109,7 @@ export async function generateMetadata({
     },
     alternates: {
       canonical: `${baseUrlForMetadata}/blog/${post.slug}`,
+      types: { 'text/markdown': markdownAlternateUrl },
     },
     robots: {
       index: true,
@@ -194,13 +190,12 @@ export default async function BlogPostPage({
 
   // Enhanced BlogPosting schema (primary) - LLM optimized
   const structuredData = {
-    '@context': 'https://schema.org',
     '@type': 'BlogPosting',
+    '@id': `${baseUrl}/blog/${post.slug}#article`,
     headline: post.title,
     description: post.meta_description || post.excerpt || firstParagraph,
     abstract: firstParagraph,
     articleBody: textContent, // Full text for LLMs
-    text: textContent, // LLM-friendly text field (full content)
     image: post.featured_image
       ? [
           post.featured_image,
@@ -211,18 +206,10 @@ export default async function BlogPostPage({
     dateModified: post.updated_at,
     author: {
       '@type': 'Person',
-      name: post.author?.name || post.author?.email || 'heldeelife',
-      ...(post.author?.email && { email: post.author.email }),
+      name: post.author?.name || 'heldeelife',
     },
-    publisher: {
-      '@type': 'Organization',
-      name: 'heldeelife',
-      url: baseUrl,
-      logo: {
-        '@type': 'ImageObject',
-        url: `${baseUrl}/logo.png`,
-      },
-    },
+    publisher: { '@id': SCHEMA_IDS.organization },
+    isPartOf: { '@id': SCHEMA_IDS.website },
     mainEntityOfPage: {
       '@type': 'WebPage',
       '@id': `${baseUrl}/blog/${post.slug}`,
@@ -241,7 +228,7 @@ export default async function BlogPostPage({
       })) || [],
     wordCount: wordCount,
     timeRequired: post.reading_time ? `PT${post.reading_time}M` : undefined,
-    inLanguage: 'en-US',
+    inLanguage: 'en-IN',
     isAccessibleForFree: true,
     url: `${baseUrl}/blog/${post.slug}`,
     ...(post.category && {
@@ -261,47 +248,6 @@ export default async function BlogPostPage({
           position: index + 1,
         })),
     }),
-  }
-
-  // Article schema (dual schema for better LLM compatibility and search engines)
-  const articleSchema = {
-    '@context': 'https://schema.org',
-    '@type': 'Article',
-    headline: post.title,
-    description: post.meta_description || post.excerpt || firstParagraph,
-    abstract: firstParagraph,
-    articleBody: textContent,
-    text: textContent,
-    image: post.featured_image || contentImages[0] || undefined,
-    datePublished: post.published_at || post.created_at,
-    dateModified: post.updated_at,
-    author: {
-      '@type': 'Person',
-      name: post.author?.name || post.author?.email || 'heldeelife',
-    },
-    publisher: {
-      '@type': 'Organization',
-      name: 'heldeelife',
-      url: baseUrl,
-      logo: {
-        '@type': 'ImageObject',
-        url: `${baseUrl}/logo.png`,
-      },
-    },
-    mainEntityOfPage: {
-      '@type': 'WebPage',
-      '@id': `${baseUrl}/blog/${post.slug}`,
-    },
-    articleSection: post.category?.name || 'Health & Wellness',
-    keywords: allKeywords.join(', '),
-    about: allKeywords.map((keyword) => ({
-      '@type': 'Thing',
-      name: keyword,
-    })),
-    wordCount: wordCount,
-    inLanguage: 'en-US',
-    isAccessibleForFree: true,
-    url: `${baseUrl}/blog/${post.slug}`,
   }
 
   // Extract FAQ-like content from headings (questions in headings)
@@ -343,7 +289,6 @@ export default async function BlogPostPage({
   const faqSchema =
     faqItems.length > 0
       ? {
-          '@context': 'https://schema.org',
           '@type': 'FAQPage',
           mainEntity: faqItems.map((item) => ({
             '@type': 'Question',
@@ -353,23 +298,6 @@ export default async function BlogPostPage({
               text: item.answer,
             },
           })),
-        }
-      : null
-
-  // QAPage Schema (for better LLM understanding of Q&A content)
-  const qaPageSchema =
-    faqItems.length > 0
-      ? {
-          '@context': 'https://schema.org',
-          '@type': 'QAPage',
-          mainEntity: {
-            '@type': 'Question',
-            name: post.title,
-            acceptedAnswer: {
-              '@type': 'Answer',
-              text: textContent.substring(0, 2000), // First 2000 chars as answer
-            },
-          },
         }
       : null
 
@@ -408,43 +336,19 @@ export default async function BlogPostPage({
   })
 
   const breadcrumbStructuredData = {
-    '@context': 'https://schema.org',
     '@type': 'BreadcrumbList',
     itemListElement: breadcrumbItems,
   }
 
   return (
     <>
-      {/* Primary BlogPosting Schema - Optimized for LLMs */}
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
-      />
-      {/* Article Schema - Dual schema for maximum LLM and search engine compatibility */}
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(articleSchema) }}
-      />
-      {/* FAQ Schema - If questions detected in content */}
-      {faqSchema && (
-        <script
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }}
-        />
-      )}
-      {/* QAPage Schema - For Q&A style content */}
-      {qaPageSchema && (
-        <script
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(qaPageSchema) }}
-        />
-      )}
-      {/* Breadcrumb Schema */}
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{
-          __html: JSON.stringify(breadcrumbStructuredData),
-        }}
+      {/* BlogPosting + BreadcrumbList (+ FAQPage) as one @graph */}
+      <JsonLd
+        data={[
+          structuredData,
+          breadcrumbStructuredData,
+          ...(faqSchema ? [faqSchema] : []),
+        ]}
       />
       {/* Reading Progress Indicator - Zeigarnik Effect */}
       <ReadingProgress />

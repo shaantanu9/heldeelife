@@ -60,7 +60,7 @@ const statusSteps = [
 ]
 
 export default function OrderTrackingPage() {
-  const { data: session } = useSession()
+  const { data: session, status } = useSession()
   const router = useRouter()
   const params = useParams()
   const orderId = params.id as string
@@ -105,12 +105,16 @@ export default function OrderTrackingPage() {
   }, [orderId])
 
   useEffect(() => {
-    if (!session) {
-      router.push('/auth/signin')
+    // Wait for the session to load; only redirect when definitely signed out
+    if (status === 'unauthenticated') {
+      router.push(
+        `/auth/signin?callbackUrl=${encodeURIComponent(window.location.pathname)}`
+      )
       return
     }
+    if (!session) return
     fetchOrder()
-  }, [session, orderId, router, fetchOrder])
+  }, [session, status, orderId, router, fetchOrder])
 
   const getStatusColor = (status: string) => {
     switch (status) {

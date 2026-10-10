@@ -36,7 +36,7 @@ interface AccountStats {
 }
 
 export default function ProfilePage() {
-  const { data: session } = useSession()
+  const { data: session, status } = useSession()
   const [stats, setStats] = useState<AccountStats>({
     totalOrders: 0,
     totalSpent: 0,
@@ -54,7 +54,7 @@ export default function ProfilePage() {
       setLoading(true)
       const [ordersRes, wishlistRes, addressesRes, paymentsRes] =
         await Promise.all([
-          fetch('/api/orders'),
+          fetch('/api/orders?scope=mine'),
           fetch('/api/wishlist'),
           fetch('/api/addresses'),
           fetch('/api/payments/methods'),
@@ -71,11 +71,13 @@ export default function ProfilePage() {
         ? await paymentsRes.json()
         : { methods: [] }
 
-      const totalSpent = orders.orders?.reduce(
-        (sum: number, order: any) =>
-          sum + (order.payment_status === 'paid' ? Number(order.total_amount) : 0),
-        0
-      ) || 0
+      const totalSpent =
+        orders.orders?.reduce(
+          (sum: number, order: any) =>
+            sum +
+            (order.payment_status === 'paid' ? Number(order.total_amount) : 0),
+          0
+        ) || 0
 
       const pendingOrders =
         orders.orders?.filter(
@@ -140,6 +142,11 @@ export default function ProfilePage() {
       color: 'orange',
     },
   ].filter(Boolean)
+
+  // Avoid flashing the sign-in prompt while the session is still loading
+  if (status === 'loading') {
+    return null
+  }
 
   if (!session) {
     return (
@@ -277,8 +284,8 @@ export default function ProfilePage() {
                 <div className="flex-1">
                   <div className="flex items-center gap-3 mb-2">
                     <h2 className="text-2xl font-bold text-gray-900">
-                    {session.user?.name || 'User'}
-                  </h2>
+                      {session.user?.name || 'User'}
+                    </h2>
                     <Badge className="bg-green-100 text-green-800 border-green-200">
                       <Shield className="h-3 w-3 mr-1" />
                       Verified
@@ -317,8 +324,8 @@ export default function ProfilePage() {
                   </div>
                   <Progress value={accountCompletion} className="h-2 mb-3" />
                   <p className="text-xs text-gray-500">
-                    Complete your profile to unlock faster checkout and exclusive
-                    offers
+                    Complete your profile to unlock faster checkout and
+                    exclusive offers
                   </p>
                 </div>
               )}
@@ -338,7 +345,10 @@ export default function ProfilePage() {
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   {incompleteTasks.map((task: any, index) => {
                     const Icon = task.icon
-                    const colorClasses: Record<string, { bg: string; text: string }> = {
+                    const colorClasses: Record<
+                      string,
+                      { bg: string; text: string }
+                    > = {
                       blue: { bg: 'bg-blue-100', text: 'text-blue-600' },
                       green: { bg: 'bg-green-100', text: 'text-green-600' },
                       orange: { bg: 'bg-orange-100', text: 'text-orange-600' },
@@ -379,19 +389,21 @@ export default function ProfilePage() {
               Account Management
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            <Link href="/profile/orders">
+              <Link href="/profile/orders">
                 <Card className="border border-gray-200 shadow-md hover:shadow-xl transition-all duration-300 bg-white h-full group cursor-pointer">
-                <CardContent className="p-6">
+                  <CardContent className="p-6">
                     <div className="flex items-center gap-4 mb-3">
                       <div className="w-12 h-12 rounded-lg bg-orange-100 flex items-center justify-center group-hover:bg-orange-200 transition-colors">
-                      <Package className="h-6 w-6 text-orange-600" />
-                    </div>
+                        <Package className="h-6 w-6 text-orange-600" />
+                      </div>
                       <div className="flex-1">
-                      <h3 className="font-bold text-gray-900">Order History</h3>
-                      <p className="text-sm text-gray-600">
-                        View & track orders
-                      </p>
-                    </div>
+                        <h3 className="font-bold text-gray-900">
+                          Order History
+                        </h3>
+                        <p className="text-sm text-gray-600">
+                          View & track orders
+                        </p>
+                      </div>
                       {stats.totalOrders > 0 && (
                         <Badge className="bg-orange-100 text-orange-800">
                           {stats.totalOrders}
@@ -402,23 +414,23 @@ export default function ProfilePage() {
                       <div className="flex items-center gap-2 text-sm text-orange-600">
                         <AlertCircle className="h-4 w-4" />
                         <span>{stats.pendingOrders} pending</span>
-                  </div>
+                      </div>
                     )}
-                </CardContent>
-              </Card>
-            </Link>
+                  </CardContent>
+                </Card>
+              </Link>
 
-            <Link href="/profile/addresses">
+              <Link href="/profile/addresses">
                 <Card className="border border-gray-200 shadow-md hover:shadow-xl transition-all duration-300 bg-white h-full group cursor-pointer">
-                <CardContent className="p-6">
+                  <CardContent className="p-6">
                     <div className="flex items-center gap-4 mb-3">
                       <div className="w-12 h-12 rounded-lg bg-blue-100 flex items-center justify-center group-hover:bg-blue-200 transition-colors">
-                      <MapPin className="h-6 w-6 text-blue-600" />
-                    </div>
+                        <MapPin className="h-6 w-6 text-blue-600" />
+                      </div>
                       <div className="flex-1">
-                      <h3 className="font-bold text-gray-900">
-                        Saved Addresses
-                      </h3>
+                        <h3 className="font-bold text-gray-900">
+                          Saved Addresses
+                        </h3>
                         <p className="text-sm text-gray-600">
                           Manage addresses
                         </p>
@@ -433,27 +445,27 @@ export default function ProfilePage() {
                       <div className="flex items-center gap-2 text-sm text-orange-600">
                         <AlertCircle className="h-4 w-4" />
                         <span>Add your first address</span>
-                  </div>
+                      </div>
                     )}
-                </CardContent>
-              </Card>
-            </Link>
+                  </CardContent>
+                </Card>
+              </Link>
 
-            <Link href="/profile/payments">
+              <Link href="/profile/payments">
                 <Card className="border border-gray-200 shadow-md hover:shadow-xl transition-all duration-300 bg-white h-full group cursor-pointer">
-                <CardContent className="p-6">
+                  <CardContent className="p-6">
                     <div className="flex items-center gap-4 mb-3">
                       <div className="w-12 h-12 rounded-lg bg-green-100 flex items-center justify-center group-hover:bg-green-200 transition-colors">
-                      <CreditCard className="h-6 w-6 text-green-600" />
-                    </div>
+                        <CreditCard className="h-6 w-6 text-green-600" />
+                      </div>
                       <div className="flex-1">
-                      <h3 className="font-bold text-gray-900">
-                        Payment Methods
-                      </h3>
-                      <p className="text-sm text-gray-600">
-                        Manage payment options
-                      </p>
-                    </div>
+                        <h3 className="font-bold text-gray-900">
+                          Payment Methods
+                        </h3>
+                        <p className="text-sm text-gray-600">
+                          Manage payment options
+                        </p>
+                      </div>
                       {stats.paymentMethodsCount > 0 && (
                         <Badge className="bg-green-100 text-green-800">
                           {stats.paymentMethodsCount}
@@ -463,21 +475,21 @@ export default function ProfilePage() {
                     <div className="flex items-center gap-2 text-sm text-gray-500">
                       <Shield className="h-4 w-4" />
                       <span>Secure & encrypted</span>
-                  </div>
-                </CardContent>
-              </Card>
-            </Link>
+                    </div>
+                  </CardContent>
+                </Card>
+              </Link>
 
-            <Link href="/profile/wishlist">
+              <Link href="/profile/wishlist">
                 <Card className="border border-gray-200 shadow-md hover:shadow-xl transition-all duration-300 bg-white h-full group cursor-pointer">
-                <CardContent className="p-6">
+                  <CardContent className="p-6">
                     <div className="flex items-center gap-4 mb-3">
                       <div className="w-12 h-12 rounded-lg bg-pink-100 flex items-center justify-center group-hover:bg-pink-200 transition-colors">
-                      <Heart className="h-6 w-6 text-pink-600" />
-                    </div>
+                        <Heart className="h-6 w-6 text-pink-600" />
+                      </div>
                       <div className="flex-1">
-                      <h3 className="font-bold text-gray-900">Wishlist</h3>
-                      <p className="text-sm text-gray-600">Saved products</p>
+                        <h3 className="font-bold text-gray-900">Wishlist</h3>
+                        <p className="text-sm text-gray-600">Saved products</p>
                       </div>
                       {stats.wishlistCount > 0 && (
                         <Badge className="bg-pink-100 text-pink-800">
@@ -489,26 +501,26 @@ export default function ProfilePage() {
                       <div className="flex items-center gap-2 text-sm text-gray-500">
                         <Heart className="h-4 w-4" />
                         <span>Start saving favorites</span>
-                  </div>
+                      </div>
                     )}
-                </CardContent>
-              </Card>
-            </Link>
+                  </CardContent>
+                </Card>
+              </Link>
 
-            <Link href="/profile/returns">
+              <Link href="/profile/returns">
                 <Card className="border border-gray-200 shadow-md hover:shadow-xl transition-all duration-300 bg-white h-full group cursor-pointer">
-                <CardContent className="p-6">
+                  <CardContent className="p-6">
                     <div className="flex items-center gap-4 mb-3">
                       <div className="w-12 h-12 rounded-lg bg-purple-100 flex items-center justify-center group-hover:bg-purple-200 transition-colors">
-                      <RefreshCw className="h-6 w-6 text-purple-600" />
-                    </div>
+                        <RefreshCw className="h-6 w-6 text-purple-600" />
+                      </div>
                       <div className="flex-1">
-                      <h3 className="font-bold text-gray-900">
-                        Returns & Refunds
-                      </h3>
-                      <p className="text-sm text-gray-600">Track returns</p>
+                        <h3 className="font-bold text-gray-900">
+                          Returns & Refunds
+                        </h3>
+                        <p className="text-sm text-gray-600">Track returns</p>
+                      </div>
                     </div>
-                  </div>
                     <div className="flex items-center gap-2 text-sm text-gray-500">
                       <CheckCircle2 className="h-4 w-4" />
                       <span>30-day return policy</span>
@@ -535,9 +547,9 @@ export default function ProfilePage() {
                       <User className="h-4 w-4" />
                       <span>Manage your account</span>
                     </div>
-                </CardContent>
-              </Card>
-            </Link>
+                  </CardContent>
+                </Card>
+              </Link>
             </div>
           </div>
         </div>

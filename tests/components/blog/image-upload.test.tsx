@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -32,9 +33,14 @@ describe('ImageUpload', () => {
     render(<ImageUpload value="" onChange={mockOnChange} />)
 
     expect(
-      screen.getByText('Upload an image or paste a URL')
+      screen.getByText('Drag and drop an image here, or click to upload')
     ).toBeInTheDocument()
-    expect(screen.getByText('Upload Image')).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: /choose image/i })
+    ).toBeInTheDocument()
+    expect(
+      screen.getByText('PNG, JPG, WEBP, GIF up to 10MB')
+    ).toBeInTheDocument()
   })
 
   it('should display preview when image URL is provided', () => {
@@ -47,14 +53,34 @@ describe('ImageUpload', () => {
 
   it('should allow entering image URL manually', async () => {
     const user = userEvent.setup()
-    render(<ImageUpload value="" onChange={mockOnChange} />)
+    // The URL input is controlled by `value`, so drive it from parent state
+    function ControlledImageUpload() {
+      const [url, setUrl] = useState('')
+      return (
+        <ImageUpload
+          value={url}
+          onChange={(next) => {
+            setUrl(next)
+            mockOnChange(next)
+          }}
+        />
+      )
+    }
+    render(<ControlledImageUpload />)
 
     const urlInput = screen.getByPlaceholderText(
       'https://example.com/image.jpg'
     )
     await user.type(urlInput, 'https://example.com/test.jpg')
 
-    expect(mockOnChange).toHaveBeenCalledWith('https://example.com/test.jpg')
+    expect(mockOnChange).toHaveBeenLastCalledWith(
+      'https://example.com/test.jpg'
+    )
+    expect(urlInput).toHaveValue('https://example.com/test.jpg')
+    expect(screen.getByAltText('Preview')).toHaveAttribute(
+      'src',
+      'https://example.com/test.jpg'
+    )
   })
 
   it('should upload file when selected', async () => {
@@ -91,7 +117,9 @@ describe('ImageUpload', () => {
   })
 
   it('should validate file type before upload', async () => {
-    const user = userEvent.setup()
+    // Bypass the input's accept="image/*" filter so the component's own
+    // validation is exercised (e.g. a file dropped onto the drop zone)
+    const user = userEvent.setup({ applyAccept: false })
     const { toast } = await import('sonner')
     const mockFile = new File(['test content'], 'test.pdf', {
       type: 'application/pdf',
@@ -109,6 +137,7 @@ describe('ImageUpload', () => {
         'Invalid file type. Only images are allowed.'
       )
     })
+    expect(fetch).not.toHaveBeenCalled()
   })
 
   it('should validate file size before upload', async () => {
@@ -126,8 +155,11 @@ describe('ImageUpload', () => {
     await user.upload(fileInput, largeFile)
 
     await waitFor(() => {
-      expect(toast.error).toHaveBeenCalledWith('File size exceeds 10MB limit')
+      expect(toast.error).toHaveBeenCalledWith(
+        'File size exceeds 10MB limit. Current size: 11.00MB'
+      )
     })
+    expect(fetch).not.toHaveBeenCalled()
   })
 
   it('should remove image when remove button is clicked', async () => {
@@ -135,7 +167,7 @@ describe('ImageUpload', () => {
     const imageUrl = 'https://example.com/image.jpg'
     render(<ImageUpload value={imageUrl} onChange={mockOnChange} />)
 
-    const removeButton = screen.getByRole('button', { name: /remove/i })
+    const removeButton = screen.getByRole('button', { name: /remove image/i })
     await user.click(removeButton)
 
     expect(mockOnChange).toHaveBeenCalledWith('')

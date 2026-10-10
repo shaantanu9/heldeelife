@@ -1,6 +1,6 @@
-export const metadata = {
-  title: '403 Unauthorized',
-}
+import { privateMetadata } from '@/lib/seo/metadata'
+
+export const metadata = privateMetadata('403 Unauthorized')
 
 export default function UnauthorizedPage() {
   return (

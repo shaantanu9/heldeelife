@@ -170,28 +170,34 @@ export function ProductImageGallery({
           }
         }}
       >
-        {(hoveredThumbnail || currentImage) && isValidImageUrl(hoveredThumbnail || currentImage) ? (
+        {currentImage && isValidImageUrl(currentImage) ? (
           <>
             {/* Base Image (current selected) */}
             <div
               className="relative w-full h-full transition-opacity duration-300"
               style={{
-                opacity: hoveredThumbnail && hoveredThumbnail !== currentImage ? 0.3 : 1,
+                opacity:
+                  hoveredThumbnail &&
+                  hoveredThumbnail !== currentImage &&
+                  isValidImageUrl(hoveredThumbnail)
+                    ? 0.3
+                    : 1,
               }}
             >
               <div
                 className="relative w-full h-full transition-transform duration-300"
                 style={{
-                  transform: isZooming && !hoveredThumbnail
-                    ? `scale(2.5) translate(${
-                        (50 - zoomPosition.x) * 0.3
-                      }%, ${(50 - zoomPosition.y) * 0.3}%)`
-                    : 'scale(1)',
+                  transform:
+                    isZooming && !hoveredThumbnail
+                      ? `scale(2.5) translate(${
+                          (50 - zoomPosition.x) * 0.3
+                        }%, ${(50 - zoomPosition.y) * 0.3}%)`
+                      : 'scale(1)',
                   transformOrigin: `${zoomPosition.x}% ${zoomPosition.y}%`,
                 }}
               >
                 <Image
-                  src={currentImage!}
+                  src={currentImage}
                   alt={productName}
                   fill
                   className="object-contain"
@@ -200,24 +206,26 @@ export function ProductImageGallery({
                 />
               </div>
             </div>
-            
+
             {/* Hover Preview Overlay - Shows when hovering over thumbnail */}
-            {hoveredThumbnail && hoveredThumbnail !== currentImage && (
-              <div 
-                className="absolute inset-0 z-20 transition-opacity duration-300"
-                style={{
-                  opacity: 1,
-                }}
-              >
-                <Image
-                  src={hoveredThumbnail}
-                  alt={`${productName} preview`}
-                  fill
-                  className="object-contain"
-                  unoptimized
-                />
-              </div>
-            )}
+            {hoveredThumbnail &&
+              hoveredThumbnail !== currentImage &&
+              isValidImageUrl(hoveredThumbnail) && (
+                <div
+                  className="absolute inset-0 z-20 transition-opacity duration-300"
+                  style={{
+                    opacity: 1,
+                  }}
+                >
+                  <Image
+                    src={hoveredThumbnail}
+                    alt={`${productName} preview`}
+                    fill
+                    className="object-contain"
+                    unoptimized
+                  />
+                </div>
+              )}
 
             {/* Zoom overlay indicator (shows zoom area) */}
             {isZooming && showZoom && (

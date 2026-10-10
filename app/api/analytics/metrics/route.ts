@@ -8,13 +8,19 @@ export async function GET(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
 
-    if (!session || session.user?.role !== 'admin') {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    if (!session?.user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+    if (session.user.role !== 'admin') {
+      return NextResponse.json(
+        { error: 'Forbidden: Admin access required' },
+        { status: 403 }
+      )
     }
 
     // Rate limit: 10 analytics metrics requests per minute per admin user
     const ip = getRateLimitIdentifier(request)
-    const rateLimitResult = await rateLimit(`analytics-metrics:${session?.user?.id || ip}`, 10, 60)
+    const rateLimitResult = await rateLimit(`analytics-metrics:${session.user.id || ip}`, 10, 60)
     if (!rateLimitResult.success) {
       return NextResponse.json(
         { error: 'Too many requests. Please try again later.' },

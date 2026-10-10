@@ -320,12 +320,12 @@ export function htmlToMarkdown(html: string): string {
       .replace(/\s+/g, ' ')
       .trim()
       .split(/\n/)
-    return '\n\n' + lines.map((l) => '> ' + l.trim()).join('\n') + '\n\n'
+    return '\n\n' + lines.map((l: string) => '> ' + l.trim()).join('\n') + '\n\n'
   })
 
   // Unordered list: <ul>...</ul> with <li>...</li>
-  md = md.replace(/<ul[^>]*>(.*?)<\/ul>/gis, (_, inner) => {
-    const items = (inner.match(/<li[^>]*>(.*?)<\/li>/gi) || []).map((li) => {
+  md = md.replace(/<ul[^>]*>(.*?)<\/ul>/gis, (_, inner: string) => {
+    const items = (inner.match(/<li[^>]*>(.*?)<\/li>/gi) || []).map((li: string) => {
       const t = li.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim()
       return '- ' + t
     })
@@ -333,9 +333,9 @@ export function htmlToMarkdown(html: string): string {
   })
 
   // Ordered list
-  md = md.replace(/<ol[^>]*>(.*?)<\/ol>/gis, (_, inner) => {
+  md = md.replace(/<ol[^>]*>(.*?)<\/ol>/gis, (_, inner: string) => {
     const items = (inner.match(/<li[^>]*>(.*?)<\/li>/gi) || []).map(
-      (li, i) => {
+      (li: string, i: number) => {
         const t = li.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim()
         return `${i + 1}. ${t}`
       }

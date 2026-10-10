@@ -6,7 +6,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import NewBlogPostPage from '@/app/admin/blog/new/page'
+import { NewBlogPostClient as NewBlogPostPage } from '@/app/admin/blog/new/client'
 
 vi.mock('next/navigation', () => ({
   useRouter: () => ({
@@ -135,7 +135,7 @@ describe('New Blog Post Form Flow', () => {
     render(<NewBlogPostPage />)
 
     await waitFor(() => {
-      expect(screen.getByLabelText(/title/i)).toBeInTheDocument()
+      expect(screen.getByLabelText(/^title/i)).toBeInTheDocument()
       expect(screen.getByLabelText(/slug/i)).toBeInTheDocument()
       expect(screen.getByLabelText(/excerpt/i)).toBeInTheDocument()
     })

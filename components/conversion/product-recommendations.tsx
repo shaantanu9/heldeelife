@@ -122,6 +122,7 @@ export function ProductRecommendations({
       name: product.name,
       price: product.price,
       image: product.image || '📦',
+      maxQuantity: product.stockQuantity,
       sku: product.sku,
     })
     toast.success(`${product.name} added to cart`)

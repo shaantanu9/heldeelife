@@ -6,19 +6,33 @@ import {
   XCircle,
   AlertCircle,
 } from 'lucide-react'
-import { Metadata } from 'next'
+import { buildMetadata } from '@/lib/seo/metadata'
+import { JsonLd } from '@/lib/seo/json-ld'
+import { webPageSchema } from '@/lib/seo/schema'
 
-export const metadata: Metadata = {
-  title: 'Refund Policy | heldeelife',
+export const metadata = buildMetadata({
+  title: 'Refund & Return Policy',
   description:
-    'Read heldeelife&apos;s refund policy to understand return eligibility, refund process, and cancellation terms.',
-}
+    'heldeelife’s refund policy: 7-day returns, eligibility, how to request a return, refund timelines by payment method and cancellation terms.',
+  path: '/refund',
+})
 
 export const dynamic = 'force-static'
 
 export default function RefundPolicyPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-orange-50/40 py-8 md:py-16">
+      <JsonLd
+        data={webPageSchema({
+          path: '/refund',
+          name: 'Refund Policy',
+          type: 'WebPage',
+          breadcrumb: [
+            { name: 'Home', path: '/' },
+            { name: 'Refund Policy', path: '/refund' },
+          ],
+        })}
+      />
       <div className="container px-4">
         <div className="max-w-4xl mx-auto">
           <h1 className="text-4xl font-bold text-gray-900 mb-4">
