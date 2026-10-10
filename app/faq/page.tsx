@@ -1,12 +1,15 @@
 import { Card, CardContent } from '@/components/ui/card'
 import { HelpCircle } from 'lucide-react'
-import { Metadata } from 'next'
+import { buildMetadata } from '@/lib/seo/metadata'
+import { JsonLd } from '@/lib/seo/json-ld'
+import { webPageSchema, faqSchema } from '@/lib/seo/schema'
 
-export const metadata: Metadata = {
-  title: 'FAQ | heldeelife',
+export const metadata = buildMetadata({
+  title: 'Frequently Asked Questions',
   description:
-    'Find answers to frequently asked questions about heldeelife products, services, orders, shipping, and more.',
-}
+    'Answers to common questions about heldeelife Ayurvedic products, shipping times and charges, returns and refunds, consultations, payments and your account.',
+  path: '/faq',
+})
 
 export const dynamic = 'force-static'
 
@@ -37,7 +40,7 @@ const faqCategories = [
       },
       {
         q: 'Do you offer product samples?',
-        a: 'Currently, we don&apos;t offer product samples, but we have a 7-day return policy if you&apos;re not satisfied with your purchase. Please see our Refund Policy for details.',
+        a: 'Currently, we don’t offer product samples, but we have a 7-day return policy if you’re not satisfied with your purchase. Please see our Refund Policy for details.',
       },
       {
         q: 'How should I store the products?',
@@ -62,7 +65,7 @@ const faqCategories = [
       },
       {
         q: 'Can I track my order?',
-        a: 'Yes, once your order is shipped, you&apos;ll receive a tracking number via email and SMS. You can track your order through your account dashboard or the tracking link provided.',
+        a: 'Yes, once your order is shipped, you’ll receive a tracking number via email and SMS. You can track your order through your account dashboard or the tracking link provided.',
       },
       {
         q: 'Do you ship internationally?',
@@ -92,7 +95,7 @@ const faqCategories = [
     questions: [
       {
         q: 'How do I book a consultation?',
-        a: 'You can book a consultation through our Service page. Fill out the consultation request form with your preferred date and time, and we&apos;ll confirm your appointment.',
+        a: 'You can book a consultation through our Service page. Fill out the consultation request form with your preferred date and time, and we’ll confirm your appointment.',
       },
       {
         q: 'What types of consultations do you offer?',
@@ -113,7 +116,7 @@ const faqCategories = [
     questions: [
       {
         q: 'How do I create an account?',
-        a: 'Click on the &quot;Sign Up&quot; button in the header, fill in your details, and verify your email address. You can also sign up during checkout.',
+        a: 'Click on the “Sign Up” button in the header, fill in your details, and verify your email address. You can also sign up during checkout.',
       },
       {
         q: 'What payment methods do you accept?',
@@ -134,6 +137,25 @@ const faqCategories = [
 export default function FAQPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-orange-50/40 py-8 md:py-16">
+      <JsonLd
+        data={[
+          webPageSchema({
+            path: '/faq',
+            name: 'Frequently Asked Questions',
+            type: 'WebPage',
+            breadcrumb: [
+              { name: 'Home', path: '/' },
+              { name: 'FAQ', path: '/faq' },
+            ],
+          }),
+          faqSchema(
+            faqCategories.flatMap((c) =>
+              c.questions.map((f) => ({ question: f.q, answer: f.a }))
+            ),
+            '/faq'
+          ),
+        ]}
+      />
       <div className="container px-4">
         <div className="max-w-4xl mx-auto">
           <div className="flex items-center gap-3 mb-4">
@@ -178,8 +200,8 @@ export default function FAQPage() {
               Still have questions?
             </h3>
             <p className="text-gray-600 mb-4">
-              Can&apos;t find the answer you&apos;re looking for? Our support
-              team is here to help.
+              Can’t find the answer you’re looking for? Our support team is here
+              to help.
             </p>
             <a
               href="/contact"
@@ -193,4 +215,3 @@ export default function FAQPage() {
     </div>
   )
 }
-

@@ -1,3 +1,4 @@
+/// <reference types="vitest/globals" />
 /**
  * E-commerce System Test Cases
  *

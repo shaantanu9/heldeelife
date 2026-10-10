@@ -1,10 +1,10 @@
 {
   "name": "heldeelife - Ayurveda and Modern Medicine",
   "short_name": "heldeelife",
-  "description": "Holistic approach to health and wellness through Ayurveda, combining traditional wisdom with modern medicine",
+  "description": "Authentic Ayurvedic and modern wellness products, delivered across India.",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#ffffff",
+  "background_color": "#F5F1E8",
   "theme_color": "#FF6B35",
   "orientation": "portrait-primary",
   "scope": "/",
@@ -13,16 +13,21 @@
       "src": "/icon-192.png",
       "sizes": "192x192",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
     },
     {
       "src": "/icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
     }
   ],
-  "_comment": "NOTE: You need to create icon-192.png and icon-512.png files in the /public directory. See MOBILE_OPTIMIZATION_GUIDE.md for details.",
   "categories": ["health", "wellness", "shopping", "medical"],
   "screenshots": [],
   "shortcuts": [
@@ -31,22 +36,43 @@
       "short_name": "Shop",
       "description": "Browse our products",
       "url": "/shop",
-      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
+      "icons": [
+        {
+          "src": "/icon-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
     },
     {
       "name": "Cart",
       "short_name": "Cart",
       "description": "View your cart",
       "url": "/cart",
-      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
+      "icons": [
+        {
+          "src": "/icon-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
     },
     {
       "name": "Wishlist",
       "short_name": "Wishlist",
       "description": "View your wishlist",
       "url": "/wishlist",
-      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
+      "icons": [
+        {
+          "src": "/icon-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
     }
   ],
-  "prefer_related_applications": false
+  "prefer_related_applications": false,
+  "id": "/",
+  "lang": "en-IN",
+  "dir": "ltr"
 }

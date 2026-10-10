@@ -6,7 +6,15 @@ import { rateLimit, getRateLimitIdentifier } from '@/lib/rate-limit'
 import { VALIDATION } from '@/lib/constants'
 import { Resend } from 'resend'
 
-const resend = new Resend(process.env.RESEND_API_KEY)
+// Created lazily: the Resend constructor throws without an API key, which
+// would otherwise crash `next build` and every environment lacking the key.
+let resendClient: Resend | null = null
+function getResend(): Resend {
+  if (!process.env.RESEND_API_KEY) {
+    throw new Error('RESEND_API_KEY is not configured')
+  }
+  return (resendClient ??= new Resend(process.env.RESEND_API_KEY))
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -78,7 +86,7 @@ export async function POST(request: NextRequest) {
     try {
       const from = process.env.RESEND_FROM_EMAIL || 'noreply@heldeelife.com'
       const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://heldeelife.com'
-      await resend.emails.send({
+      await getResend().emails.send({
         from,
         to: email,
         subject: 'You left something behind... 🛒',

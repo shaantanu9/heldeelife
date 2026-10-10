@@ -76,13 +76,13 @@ export function OrderNextSteps({ className }: { className?: string }) {
     {
       icon: CheckCircle2,
       title: 'Order Confirmed',
-      description: 'We&apos;ve received your order',
+      description: 'We’ve received your order',
       completed: true,
     },
     {
       icon: Truck,
       title: 'Processing',
-      description: 'We&apos;re preparing your order',
+      description: 'We’re preparing your order',
       completed: false,
     },
     {

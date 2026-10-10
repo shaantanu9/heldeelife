@@ -1,122 +1,96 @@
-import { MetadataRoute } from 'next'
-import { getBlogPostSlugs } from '@/lib/utils/blog-query'
+import type { MetadataRoute } from 'next'
 import { supabaseAdmin } from '@/lib/supabase/server'
+import { SITE_URL } from '@/lib/seo/site'
 
 export const revalidate = 3600 // Revalidate sitemap every hour
 
-export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://heldeelife.com'
+type Entry = MetadataRoute.Sitemap[number]
 
-  // Get all published blog posts with optimized query
-  const slugs = await getBlogPostSlugs()
+const STATIC_PAGES: Array<{
+  path: string
+  changeFrequency: Entry['changeFrequency']
+  priority: number
+}> = [
+  { path: '/', changeFrequency: 'daily', priority: 1 },
+  { path: '/shop', changeFrequency: 'daily', priority: 0.9 },
+  { path: '/blog', changeFrequency: 'daily', priority: 0.8 },
+  { path: '/insights', changeFrequency: 'weekly', priority: 0.7 },
+  { path: '/service', changeFrequency: 'monthly', priority: 0.7 },
+  { path: '/about', changeFrequency: 'monthly', priority: 0.6 },
+  { path: '/faq', changeFrequency: 'monthly', priority: 0.6 },
+  { path: '/contact', changeFrequency: 'yearly', priority: 0.5 },
+  { path: '/help', changeFrequency: 'monthly', priority: 0.4 },
+  { path: '/shipping', changeFrequency: 'yearly', priority: 0.4 },
+  { path: '/refund', changeFrequency: 'yearly', priority: 0.4 },
+  { path: '/privacy', changeFrequency: 'yearly', priority: 0.2 },
+  { path: '/terms', changeFrequency: 'yearly', priority: 0.2 },
+  { path: '/cookie', changeFrequency: 'yearly', priority: 0.2 },
+]
 
-  // Fetch update times in batch
-  const { data: posts } = await supabaseAdmin
-    .from('blog_posts')
-    .select('slug, updated_at, published_at')
-    .eq('status', 'published')
-    .in('slug', slugs)
+const isHttpUrl = (v: unknown): v is string =>
+  typeof v === 'string' && /^https?:\/\//.test(v)
 
-  const blogUrls: MetadataRoute.Sitemap = (posts || []).map((post) => ({
-    url: `${baseUrl}/blog/${post.slug}`,
-    lastModified: new Date(post.updated_at || post.published_at || new Date()),
-    changeFrequency: 'weekly' as const,
-    priority: 0.8,
-  }))
+const toDate = (...values: Array<string | null | undefined>) => {
+  const v = values.find(Boolean)
+  return v ? new Date(v) : undefined
+}
 
-  // Get all active products for sitemap (using slugs for SEO)
-  const { data: products } = await supabaseAdmin
-    .from('products')
-    .select('slug, updated_at, created_at')
-    .eq('is_active', true)
-    .not('slug', 'is', null) // Only include products with slugs
-    .order('created_at', { ascending: false })
+async function productEntries(): Promise<MetadataRoute.Sitemap> {
+  try {
+    const { data, error } = await supabaseAdmin
+      .from('products')
+      .select('slug, image, images, updated_at, created_at')
+      .eq('is_active', true)
+      .not('slug', 'is', null)
+      .order('created_at', { ascending: false })
+    if (error) throw error
 
-  const productUrls: MetadataRoute.Sitemap = (products || [])
-    .filter((product) => product.slug) // Ensure slug exists
-    .map((product) => ({
-      url: `${baseUrl}/products/${product.slug}`,
-      lastModified: new Date(
-        product.updated_at || product.created_at || new Date()
-      ),
-      changeFrequency: 'weekly' as const,
+    return (data || []).map((p) => ({
+      url: `${SITE_URL}/products/${p.slug}`,
+      lastModified: toDate(p.updated_at, p.created_at),
+      changeFrequency: 'weekly',
       priority: 0.8,
+      images: [p.image, ...(p.images || [])].filter(isHttpUrl).slice(0, 10),
     }))
-
-  // Get insights posts (blog posts in "insights" or "learning" categories)
-  const { data: insightsCategories } = await supabaseAdmin
-    .from('blog_categories')
-    .select('id')
-    .in('slug', ['insights', 'learning'])
-
-  const insightsCategoryIds = (insightsCategories || []).map((c) => c.id)
-
-  let insightsUrls: MetadataRoute.Sitemap = []
-  if (insightsCategoryIds.length > 0) {
-    const { data: insightsPosts } = await supabaseAdmin
-      .from('blog_posts')
-      .select('slug, updated_at, published_at')
-      .eq('status', 'published')
-      .in('category_id', insightsCategoryIds)
-      .order('published_at', { ascending: false })
-
-    insightsUrls = (insightsPosts || [])
-      .filter((post) => post.slug)
-      .map((post) => ({
-        url: `${baseUrl}/insights/${post.slug}`,
-        lastModified: new Date(
-          post.updated_at || post.published_at || new Date()
-        ),
-        changeFrequency: 'weekly' as const,
-        priority: 0.7,
-      }))
+  } catch (error) {
+    console.error('[sitemap] products unavailable:', error)
+    return []
   }
+}
 
-  // Static pages
-  const staticPages: MetadataRoute.Sitemap = [
-    {
-      url: baseUrl,
-      lastModified: new Date(),
-      changeFrequency: 'daily',
-      priority: 1,
-    },
-    {
-      url: `${baseUrl}/blog`,
-      lastModified: new Date(),
-      changeFrequency: 'daily',
-      priority: 0.9,
-    },
-    {
-      url: `${baseUrl}/shop`,
-      lastModified: new Date(),
-      changeFrequency: 'weekly',
-      priority: 0.8,
-    },
-    {
-      url: `${baseUrl}/insights`,
-      lastModified: new Date(),
-      changeFrequency: 'weekly',
-      priority: 0.8,
-    },
-    {
-      url: `${baseUrl}/about`,
-      lastModified: new Date(),
+async function blogEntries(): Promise<MetadataRoute.Sitemap> {
+  try {
+    const { data, error } = await supabaseAdmin
+      .from('blog_posts')
+      .select('slug, featured_image, updated_at, published_at')
+      .eq('status', 'published')
+      .not('slug', 'is', null)
+      .order('published_at', { ascending: false })
+    if (error) throw error
+
+    // Insights render the same posts; /insights/* canonicalises to /blog/*,
+    // so only the canonical URL is listed here.
+    return (data || []).map((post) => ({
+      url: `${SITE_URL}/blog/${post.slug}`,
+      lastModified: toDate(post.updated_at, post.published_at),
       changeFrequency: 'monthly',
       priority: 0.7,
-    },
-    {
-      url: `${baseUrl}/contact`,
-      lastModified: new Date(),
-      changeFrequency: 'monthly',
-      priority: 0.5,
-    },
-    {
-      url: `${baseUrl}/faq`,
-      lastModified: new Date(),
-      changeFrequency: 'monthly',
-      priority: 0.5,
-    },
-  ]
+      images: isHttpUrl(post.featured_image) ? [post.featured_image] : [],
+    }))
+  } catch (error) {
+    console.error('[sitemap] blog posts unavailable:', error)
+    return []
+  }
+}
 
-  return [...staticPages, ...blogUrls, ...productUrls, ...insightsUrls]
+export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
+  const [products, posts] = await Promise.all([productEntries(), blogEntries()])
+
+  const staticEntries: MetadataRoute.Sitemap = STATIC_PAGES.map((page) => ({
+    url: `${SITE_URL}${page.path === '/' ? '' : page.path}`,
+    changeFrequency: page.changeFrequency,
+    priority: page.priority,
+  }))
+
+  return [...staticEntries, ...products, ...posts]
 }

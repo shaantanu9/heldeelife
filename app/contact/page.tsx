@@ -1,19 +1,34 @@
 import { Card, CardContent } from '@/components/ui/card'
 import { Mail, Phone, MapPin, Clock } from 'lucide-react'
 import { ContactForm } from '@/components/contact/contact-form'
-import { Metadata } from 'next'
+import { buildMetadata } from '@/lib/seo/metadata'
+import { JsonLd } from '@/lib/seo/json-ld'
+import { SITE } from '@/lib/seo/site'
+import { webPageSchema } from '@/lib/seo/schema'
 
-export const metadata: Metadata = {
-  title: 'Contact Us | heldeelife',
+export const metadata = buildMetadata({
+  title: 'Contact Us — Customer Support',
   description:
-    'Get in touch with heldeelife customer support. Contact us via email, phone, or fill out our contact form.',
-}
+    'Contact heldeelife customer support by email, phone or our contact form. We help with orders, products, returns and consultations, Monday–Saturday, 9 AM–6 PM IST.',
+  path: '/contact',
+})
 
 export const dynamic = 'force-static'
 
 export default function ContactPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-orange-50/40 py-8 md:py-16">
+      <JsonLd
+        data={webPageSchema({
+          path: '/contact',
+          name: 'Contact',
+          type: 'ContactPage',
+          breadcrumb: [
+            { name: 'Home', path: '/' },
+            { name: 'Contact', path: '/contact' },
+          ],
+        })}
+      />
       <div className="container px-4">
         <div className="max-w-6xl mx-auto">
           <h1 className="text-4xl font-bold text-gray-900 mb-4">
@@ -44,8 +59,12 @@ export default function ContactPage() {
                         <h4 className="font-semibold text-gray-900 mb-1">
                           Email
                         </h4>
-                        <p className="text-gray-600">support@heldeelife.com</p>
-                        <p className="text-gray-600">info@heldeelife.com</p>
+                        <a
+                          href={`mailto:${SITE.contact.email}`}
+                          className="text-gray-600 hover:text-orange-600"
+                        >
+                          {SITE.contact.email}
+                        </a>
                       </div>
                     </div>
 
@@ -57,8 +76,12 @@ export default function ContactPage() {
                         <h4 className="font-semibold text-gray-900 mb-1">
                           Phone
                         </h4>
-                        <p className="text-gray-600">+91 1800-123-4567</p>
-                        <p className="text-gray-600">+91 98765-43210</p>
+                        <a
+                          href={`tel:${SITE.contact.phone.replace(/[^+\d]/g, '')}`}
+                          className="text-gray-600 hover:text-orange-600"
+                        >
+                          {SITE.contact.phone}
+                        </a>
                       </div>
                     </div>
 
@@ -70,13 +93,20 @@ export default function ContactPage() {
                         <h4 className="font-semibold text-gray-900 mb-1">
                           Address
                         </h4>
-                        <p className="text-gray-600">
-                          heldeelife Headquarters
+                        <address className="not-italic text-gray-600">
+                          {SITE.name} Headquarters
                           <br />
-                          Mumbai, Maharashtra 400001
+                          {SITE.address.streetAddress && (
+                            <>
+                              {SITE.address.streetAddress}
+                              <br />
+                            </>
+                          )}
+                          {SITE.address.addressLocality},{' '}
+                          {SITE.address.addressRegion} {SITE.address.postalCode}
                           <br />
                           India
-                        </p>
+                        </address>
                       </div>
                     </div>
 

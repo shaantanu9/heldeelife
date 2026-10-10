@@ -9,13 +9,16 @@ import {
   Mail,
   ArrowRight,
 } from 'lucide-react'
-import { Metadata } from 'next'
+import { buildMetadata } from '@/lib/seo/metadata'
+import { JsonLd } from '@/lib/seo/json-ld'
+import { webPageSchema } from '@/lib/seo/schema'
 
-export const metadata: Metadata = {
-  title: 'Help Center | heldeelife',
+export const metadata = buildMetadata({
+  title: 'Help Center',
   description:
-    'Get help with your heldeelife account, orders, products, and services. Find resources and contact our support team.',
-}
+    'Get help with your heldeelife account, orders, products and services. Find guides and contact our support team.',
+  path: '/help',
+})
 
 export const dynamic = 'force-static'
 
@@ -62,6 +65,17 @@ const quickLinks = [
 export default function HelpPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-orange-50/40 py-8 md:py-16">
+      <JsonLd
+        data={webPageSchema({
+          path: '/help',
+          name: 'Help Center',
+          type: 'WebPage',
+          breadcrumb: [
+            { name: 'Home', path: '/' },
+            { name: 'Help Center', path: '/help' },
+          ],
+        })}
+      />
       <div className="container px-4">
         <div className="max-w-6xl mx-auto">
           <div className="flex items-center gap-3 mb-4">
@@ -180,4 +194,3 @@ export default function HelpPage() {
     </div>
   )
 }
-

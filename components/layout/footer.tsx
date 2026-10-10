@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { SITE } from '@/lib/seo/site'
 
 export function Footer() {
   return (
@@ -137,14 +138,50 @@ export function Footer() {
             </ul>
           </div>
 
-          {/* Connect With Us - TODO: Add social media URLs post-launch */}
+          {/* Contact / NAP — kept identical to the Organization JSON-LD */}
           <div>
             <h3 className="font-semibold mb-4 text-foreground">
               CONNECT WITH US
             </h3>
-            <p className="text-sm text-muted-foreground">
-              Follow us on social media for updates and wellness tips.
-            </p>
+            <address className="not-italic space-y-2 text-sm text-muted-foreground">
+              <p>
+                {SITE.address.addressLocality}, {SITE.address.addressRegion},
+                India
+              </p>
+              <p>
+                <a
+                  href={`mailto:${SITE.contact.email}`}
+                  className="hover:text-orange-600 transition-colors"
+                >
+                  {SITE.contact.email}
+                </a>
+              </p>
+              <p>
+                <a
+                  href={`tel:${SITE.contact.phone.replace(/[^+\d]/g, '')}`}
+                  className="hover:text-orange-600 transition-colors"
+                >
+                  {SITE.contact.phone}
+                </a>
+              </p>
+              <p>{SITE.contact.hoursLabel}</p>
+            </address>
+            {SITE.social.length > 0 && (
+              <ul className="mt-4 flex flex-wrap gap-3 text-sm">
+                {SITE.social.map((url) => (
+                  <li key={url}>
+                    <a
+                      href={url}
+                      target="_blank"
+                      rel="noopener noreferrer me"
+                      className="text-muted-foreground hover:text-orange-600 transition-colors"
+                    >
+                      {new URL(url).hostname.replace(/^www\./, '')}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            )}
           </div>
         </div>
       </div>

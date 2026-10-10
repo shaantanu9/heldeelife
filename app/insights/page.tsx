@@ -1,45 +1,17 @@
 import type { Metadata } from 'next'
+import { buildMetadata } from '@/lib/seo/metadata'
+import { JsonLd } from '@/lib/seo/json-ld'
 import { Suspense } from 'react'
 import { getInsightsPosts } from '@/lib/utils/insights-query'
 import { InsightsClient } from './insights-client'
 import { Loader2 } from 'lucide-react'
 
-export const metadata: Metadata = {
-  title: 'Health Insights & Learning | heldeelife',
+export const metadata: Metadata = buildMetadata({
+  title: 'Health Insights & Learning',
   description:
-    'Discover expert health insights, wellness tips, and educational content about Ayurveda, modern medicine, and holistic wellness. Learn how to improve your health naturally.',
-  keywords: [
-    'health insights',
-    'wellness tips',
-    'ayurveda learning',
-    'health education',
-    'wellness guides',
-    'health articles',
-    'natural health',
-    'holistic wellness',
-  ],
-  openGraph: {
-    title: 'Health Insights & Learning | heldeelife',
-    description:
-      'Expert health insights, wellness tips, and educational content to support your wellness journey.',
-    type: 'website',
-    url: '/insights',
-  },
-  alternates: {
-    canonical: `${process.env.NEXT_PUBLIC_SITE_URL || 'https://heldeelife.com'}/insights`,
-  },
-  robots: {
-    index: true,
-    follow: true,
-    googleBot: {
-      index: true,
-      follow: true,
-      'max-video-preview': -1,
-      'max-image-preview': 'large',
-      'max-snippet': -1,
-    },
-  },
-}
+    'Expert health insights, wellness tips and educational guides on Ayurveda, modern medicine and holistic living from heldeelife.',
+  path: '/insights',
+})
 
 // Revalidate every 60 seconds for new insights
 export const revalidate = 60
@@ -90,10 +62,7 @@ async function InsightsContent() {
 
   return (
     <>
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(insightsStructuredData) }}
-      />
+      <JsonLd data={insightsStructuredData} />
       <InsightsClient posts={posts} />
     </>
   )

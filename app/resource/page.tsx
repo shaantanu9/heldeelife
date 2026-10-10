@@ -13,7 +13,7 @@ const resources = [
       'Learn about the ancient science of Ayurveda and its principles for holistic health.',
     type: 'Article',
     icon: BookOpen,
-    link: '#',
+    link: '/blog',
   },
   {
     id: 2,
@@ -22,7 +22,7 @@ const resources = [
       'Comprehensive guide to maintaining healthy respiratory function naturally.',
     type: 'PDF',
     icon: FileText,
-    link: '#',
+    link: '/insights',
   },
   {
     id: 3,
@@ -30,7 +30,7 @@ const resources = [
     description: 'Video series on natural ways to boost your immune system.',
     type: 'Video',
     icon: Video,
-    link: '#',
+    link: '/blog',
   },
   {
     id: 4,
@@ -39,7 +39,7 @@ const resources = [
       'Detailed instructions on how to use our products effectively.',
     type: 'PDF',
     icon: Download,
-    link: '#',
+    link: '/faq',
   },
   {
     id: 5,
@@ -48,7 +48,7 @@ const resources = [
       'Tips for incorporating Ayurvedic principles into your daily life.',
     type: 'Article',
     icon: BookOpen,
-    link: '#',
+    link: '/blog',
   },
   {
     id: 6,
@@ -56,7 +56,7 @@ const resources = [
     description: 'How to adapt your health routine according to seasons.',
     type: 'Article',
     icon: BookOpen,
-    link: '#',
+    link: '/insights',
   },
 ]
 

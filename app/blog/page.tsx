@@ -1,4 +1,7 @@
 import type { Metadata } from 'next'
+import { buildMetadata } from '@/lib/seo/metadata'
+import { JsonLd } from '@/lib/seo/json-ld'
+import { SCHEMA_IDS } from '@/lib/seo/site'
 import { Suspense } from 'react'
 import {
   getBlogPostsOptimized,
@@ -8,39 +11,18 @@ import {
 import { BlogClient } from './blog-client'
 import { Loader2 } from 'lucide-react'
 
-export const metadata: Metadata = {
-  title: 'Blog - heldeelife | Health & Wellness Articles',
+export const metadata: Metadata = buildMetadata({
+  title: 'Ayurveda & Wellness Blog — Health Articles and Guides',
   description:
-    'Discover expert insights on Ayurveda, modern medicine, health, and wellness. Read our latest articles and guides.',
+    'Expert articles on Ayurveda, immunity, respiratory health, natural remedies and modern medicine from the heldeelife team.',
+  path: '/blog',
   keywords: [
-    'health blog',
-    'ayurveda',
-    'wellness',
-    'medicine',
+    'ayurveda blog',
     'health articles',
+    'natural remedies',
+    'wellness tips',
   ],
-  openGraph: {
-    title: 'Blog - heldeelife',
-    description:
-      'Discover expert insights on Ayurveda, modern medicine, health, and wellness.',
-    type: 'website',
-    url: '/blog',
-  },
-  alternates: {
-    canonical: `${process.env.NEXT_PUBLIC_SITE_URL || 'https://heldeelife.com'}/blog`,
-  },
-  robots: {
-    index: true,
-    follow: true,
-    googleBot: {
-      index: true,
-      follow: true,
-      'max-video-preview': -1,
-      'max-image-preview': 'large',
-      'max-snippet': -1,
-    },
-  },
-}
+})
 
 // Revalidate every 60 seconds for new posts
 export const revalidate = 60
@@ -78,20 +60,14 @@ async function BlogContent({
 
   // Structured data for Blog collection
   const blogStructuredData = {
-    '@context': 'https://schema.org',
     '@type': 'Blog',
+    '@id': `${baseUrl}/blog#blog`,
     name: 'heldeelife Blog',
     description:
       'Expert insights on health, wellness, Ayurveda, and modern medicine',
     url: `${baseUrl}/blog`,
-    publisher: {
-      '@type': 'Organization',
-      name: 'heldeelife',
-      logo: {
-        '@type': 'ImageObject',
-        url: `${baseUrl}/logo.png`,
-      },
-    },
+    publisher: { '@id': SCHEMA_IDS.organization },
+    inLanguage: 'en-IN',
     blogPost: posts.map((post: any) => ({
       '@type': 'BlogPosting',
       headline: post.title,
@@ -100,20 +76,14 @@ async function BlogContent({
       datePublished: post.published_at || post.created_at,
       dateModified: post.updated_at,
       image: post.featured_image || undefined,
-      author: {
-        '@type': 'Person',
-        name: 'heldeelife',
-      },
+      author: { '@type': 'Person', name: post.author?.name || 'heldeelife' },
       articleSection: post.category?.name || 'Health & Wellness',
     })),
   }
 
   return (
     <>
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(blogStructuredData) }}
-      />
+      <JsonLd data={blogStructuredData} />
       <BlogClient posts={posts} categories={categories} tags={tags} />
     </>
   )

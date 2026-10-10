@@ -491,8 +491,12 @@ export function NewBlogPostClient() {
               metaDescription={metaDescription || ''}
               content={content || ''}
               featuredImage={featuredImage || ''}
-              tags={tags.filter((t) => selectedTags.includes(t.id)).map((t) => t.name)}
-              category={categories.find((c) => c.id === watch('category_id'))?.name}
+              tags={tags
+                .filter((t) => selectedTags.includes(t.id))
+                .map((t) => t.name)}
+              category={
+                categories.find((c) => c.id === watch('category_id'))?.name
+              }
               slug={watch('slug') || ''}
             />
 
@@ -542,16 +546,15 @@ export function NewBlogPostClient() {
         </div>
 
         <div className="flex items-center justify-end gap-4">
-            <Link href="/admin/blog">
-              <Button type="button" variant="outline">
-                Cancel
-              </Button>
-            </Link>
-            <Button type="submit" disabled={loading}>
-              <Save className="h-4 w-4 mr-2" />
-              {loading ? 'Creating...' : 'Create Post'}
+          <Link href="/admin/blog">
+            <Button type="button" variant="outline">
+              Cancel
             </Button>
-          </div>
+          </Link>
+          <Button type="submit" disabled={loading}>
+            <Save className="h-4 w-4 mr-2" />
+            {loading ? 'Creating...' : 'Create Post'}
+          </Button>
         </div>
       </form>
     </div>

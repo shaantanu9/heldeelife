@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import { JsonLd } from '@/lib/seo/json-ld'
 import { notFound } from 'next/navigation'
 import { getInsightPost } from '@/lib/utils/insights-query'
 import { InsightClient } from './insight-client'
@@ -18,21 +19,21 @@ export async function generateMetadata({
 
   if (!post) {
     return {
-      title: 'Insight Not Found | heldeelife',
+      title: 'Insight Not Found',
     }
   }
 
   const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://heldeelife.com'
 
   return {
-    title: post.meta_title || `${post.title} | heldeelife`,
+    title: post.meta_title || post.title,
     description: post.meta_description || post.excerpt || post.title,
     keywords: post.meta_keywords || [],
     openGraph: {
       title: post.meta_title || post.title,
       description: post.meta_description || post.excerpt || '',
       type: 'article',
-      url: `${baseUrl}/insights/${post.slug}`,
+      url: `${baseUrl}/blog/${post.slug}`,
       images: post.featured_image
         ? [
             {
@@ -54,8 +55,10 @@ export async function generateMetadata({
       description: post.meta_description || post.excerpt || '',
       images: post.featured_image ? [post.featured_image] : [],
     },
+    // Insights are blog posts rendered in a different layout; point search
+    // engines at the /blog URL so the two don't compete as duplicates.
     alternates: {
-      canonical: `${baseUrl}/insights/${post.slug}`,
+      canonical: `${baseUrl}/blog/${post.slug}`,
     },
     robots: {
       index: true,
@@ -121,10 +124,7 @@ export default async function InsightPage({ params }: InsightPageProps) {
 
   return (
     <>
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(articleStructuredData) }}
-      />
+      <JsonLd data={articleStructuredData} />
       <InsightClient post={post} relatedPosts={relatedPosts} />
     </>
   )

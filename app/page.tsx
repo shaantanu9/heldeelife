@@ -4,6 +4,7 @@ import { DailyDeals } from '@/components/sections/daily-deals'
 import { Suspense } from 'react'
 import dynamic from 'next/dynamic'
 import type { Metadata } from 'next'
+import { buildMetadata } from '@/lib/seo/metadata'
 import { cookies } from 'next/headers'
 import { AB_COOKIE_NAME, getVariantById } from '@/lib/ab-testing/select-variant'
 
@@ -14,7 +15,9 @@ const HeroEnhanced = dynamic(
       default: mod.HeroEnhanced,
     })),
   {
-    loading: () => <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-orange-50/40" />,
+    loading: () => (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-orange-50/40" />
+    ),
     ssr: true,
   }
 )
@@ -36,7 +39,9 @@ const ValueProposition = dynamic(
       default: mod.ValueProposition,
     })),
   {
-    loading: () => <div className="py-24 bg-gradient-to-br from-slate-50 via-white to-orange-50/20" />,
+    loading: () => (
+      <div className="py-24 bg-gradient-to-br from-slate-50 via-white to-orange-50/20" />
+    ),
     ssr: true,
   }
 )
@@ -131,18 +136,22 @@ const Newsletter = dynamic(
 // Route segment config for ISR
 export const revalidate = 60 // Revalidate every 60 seconds
 
-export const metadata: Metadata = {
-  title: 'heldeelife - Authentic Ayurveda & Modern Medicine | Holistic Wellness',
+export const metadata: Metadata = buildMetadata({
+  title: 'heldeelife — Authentic Ayurveda & Modern Medicine Online | India',
   description:
-    'Experience the perfect blend of ancient Ayurvedic wisdom and modern medicine. Authentic products, expert guidance, and personalized care for your complete well-being. Trusted by 50,000+ customers.',
-}
+    'Shop authentic Ayurvedic remedies and modern wellness products online in India. Natural immunity and respiratory care, expert doctor consultations, free shipping over ₹500 and 7-day returns.',
+  path: '/',
+  absoluteTitle: true,
+})
 
 export default async function Home() {
   const cookieStore = await cookies()
   const variant = getVariantById(cookieStore.get(AB_COOKIE_NAME)?.value)
 
   // Server-side impression log for A/B test analytics
-  console.log(`[AB Test] hero_variant=${variant.id} trigger=${variant.psychTrigger}`)
+  console.log(
+    `[AB Test] hero_variant=${variant.id} trigger=${variant.psychTrigger}`
+  )
 
   return (
     <div className="min-h-screen">
@@ -150,41 +159,41 @@ export default async function Home() {
 
       {/* 1. HERO - Attention & Interest (AIDA: A, I) */}
       <HeroEnhanced variant={variant} />
-      
+
       {/* 2. TRUST SIGNALS - Build Credibility Immediately */}
       <TrustSignals />
-      
+
       {/* 3. VALUE PROPOSITION - Desire (AIDA: D) */}
       <ValueProposition />
-      
+
       {/* 4. PROBLEM-SOLUTION - Address Pain Points */}
       <ProblemSolution />
-      
+
       {/* 5. PRODUCTS - Show Solutions (Action: A) */}
       <DailyDeals />
       <Suspense fallback={<div className="py-24 bg-white" />}>
         <Products />
       </Suspense>
       <Categories />
-      
+
       {/* 6. PROMOTIONS - Urgency & Scarcity */}
       <Promotions />
-      
+
       {/* 7. TESTIMONIALS - Social Proof */}
       <Testimonials />
-      
+
       {/* 8. BRAND STORY - Authenticity & Trust */}
       <BrandStory />
-      
+
       {/* 9. RISK REVERSAL - Remove Objections */}
       <RiskReversal />
-      
+
       {/* 10. DOCTORS - Authority & Expertise */}
       <Doctors />
-      
+
       {/* 11. INSIGHTS - Education & Value */}
       <Insights />
-      
+
       {/* 12. NEWSLETTER - Lead Capture */}
       <Newsletter />
     </div>

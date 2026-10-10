@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getBlogPostOptimized } from '@/lib/utils/blog-query'
 import { buildBlogMarkdownDocument } from '@/lib/utils/blog-content'
+import { SITE_URL } from '@/lib/seo/site'
 
 /**
  * Serves the blog post as Markdown so parsers and LLMs can fetch and use it.
@@ -20,8 +21,7 @@ export async function GET(
     return NextResponse.json({ error: 'Not found' }, { status: 404 })
   }
 
-  const baseUrl =
-    process.env.NEXT_PUBLIC_SITE_URL || 'https://www.heldeelife.com'
+  const baseUrl = SITE_URL
   const canonical = `${baseUrl}/blog/${post.slug}`
 
   const markdown = buildBlogMarkdownDocument(

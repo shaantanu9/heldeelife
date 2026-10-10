@@ -2,6 +2,9 @@ import { Suspense } from 'react'
 import { getProducts, getProductCategories } from '@/lib/api/server'
 import { ShopClient } from './shop-client'
 import { Metadata } from 'next'
+import { buildMetadata } from '@/lib/seo/metadata'
+import { JsonLd } from '@/lib/seo/json-ld'
+import { itemListSchema, webPageSchema } from '@/lib/seo/schema'
 import { Loader2 } from 'lucide-react'
 
 const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://heldeelife.com'
@@ -9,48 +12,19 @@ const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://heldeelife.com'
 // ISR - revalidate every 60 seconds for fresh product data
 export const revalidate = 60
 
-export const metadata: Metadata = {
-  title: 'Shop Ayurveda & Wellness Products | heldeelife',
+export const metadata: Metadata = buildMetadata({
+  title: 'Shop Ayurvedic & Wellness Products Online',
   description:
-    'Browse and shop authentic Ayurveda products, herbal remedies, immunity boosters, and modern wellness solutions. Free shipping on orders above ₹499. Trusted by 50,000+ customers.',
+    'Shop authentic Ayurvedic products, herbal remedies, immunity boosters and modern wellness essentials online in India. Free shipping on orders above ₹500 and 7-day returns.',
+  path: '/shop',
   keywords: [
-    'buy ayurveda products',
-    'ayurveda shop online',
-    'herbal products india',
-    'wellness products',
+    'buy ayurveda products online',
+    'ayurvedic shop India',
+    'herbal products',
     'immunity booster',
-    'cold relief',
-    'cough remedy',
-    'natural medicine',
-    'heldeelife shop',
+    'natural cough and cold relief',
   ],
-  openGraph: {
-    title: 'Shop Ayurveda & Wellness Products | heldeelife',
-    description:
-      'Browse and shop authentic Ayurveda products, herbal remedies, and modern wellness solutions.',
-    type: 'website',
-    url: `${baseUrl}/shop`,
-  },
-  twitter: {
-    card: 'summary_large_image',
-    title: 'Shop Ayurveda & Wellness Products | heldeelife',
-    description:
-      'Browse and shop authentic Ayurveda products, herbal remedies, and modern wellness solutions.',
-  },
-  alternates: {
-    canonical: `${baseUrl}/shop`,
-  },
-  robots: {
-    index: true,
-    follow: true,
-    googleBot: {
-      index: true,
-      follow: true,
-      'max-image-preview': 'large',
-      'max-snippet': -1,
-    },
-  },
-}
+})
 
 // Loading component
 function ShopLoading() {
@@ -90,52 +64,27 @@ async function ShopContent({
   ])
 
   // Structured data for SEO and LLMs
-  const structuredData = {
-    '@context': 'https://schema.org',
-    '@type': 'CollectionPage',
-    name: 'heldeelife Shop - Ayurveda & Wellness Products',
-    description:
-      'Browse and shop authentic Ayurveda products, herbal remedies, and modern wellness solutions.',
-    url: `${baseUrl}/shop`,
-    mainEntity: {
-      '@type': 'ItemList',
-      numberOfItems: products.length,
-      itemListElement: products.slice(0, 20).map((product, index) => ({
-        '@type': 'ListItem',
-        position: index + 1,
-        item: {
-          '@type': 'Product',
-          name: product.name,
-          url: `${baseUrl}/products/${product.slug}`,
-          image: product.image || undefined,
-          description: product.short_description || product.description || '',
-          offers: {
-            '@type': 'Offer',
-            price: Number(product.price),
-            priceCurrency: 'INR',
-            availability:
-              product.inStock || (product.inventory && product.inventory[0]?.available_quantity > 0)
-                ? 'https://schema.org/InStock'
-                : 'https://schema.org/OutOfStock',
-          },
-        },
-      })),
-    },
-    provider: {
-      '@type': 'Organization',
-      name: 'heldeelife',
-      url: baseUrl,
-    },
-  }
+  // Summary-style ItemList (URLs only): full Product markup lives on each
+  // product page, which is what Google expects for category pages.
+  const structuredData = [
+    webPageSchema({
+      path: '/shop',
+      name: 'Shop Ayurveda & Wellness Products',
+      type: 'CollectionPage',
+      breadcrumb: [
+        { name: 'Home', path: '/' },
+        { name: 'Shop', path: '/shop' },
+      ],
+    }),
+    itemListSchema(products.slice(0, 50), {
+      name: 'heldeelife products',
+      path: '/shop',
+    }),
+  ]
 
   return (
     <>
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{
-          __html: JSON.stringify(structuredData),
-        }}
-      />
+      <JsonLd data={structuredData} />
       <ShopClient products={products} categories={categories} />
     </>
   )

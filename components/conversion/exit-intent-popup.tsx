@@ -79,12 +79,24 @@ export function ExitIntentPopup({
 
     setIsSubmitting(true)
     try {
+      const res = await fetch('/api/inquiries', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type: 'newsletter',
+          email: email.trim(),
+          source: 'exit-intent',
+        }),
+      })
+      const data = await res.json().catch(() => null)
+      if (!res.ok) {
+        toast.error(data?.error || 'Something went wrong. Please try again.')
+        return
+      }
+
       // Save email and discount code
       localStorage.setItem('heldeelife-discount-email', email)
       localStorage.setItem('heldeelife-discount-code', discountCode)
-
-      // Here you would typically send to your API
-      // await fetch('/api/newsletter', { method: 'POST', body: JSON.stringify({ email }) })
 
       toast.success(`Discount code applied!`, {
         description: `Use code ${discountCode} at checkout`,
@@ -150,12 +162,3 @@ export function ExitIntentPopup({
     </Dialog>
   )
 }
-
-
-
-
-
-
-
-
-
