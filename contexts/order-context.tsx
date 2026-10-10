@@ -66,7 +66,7 @@ export function OrderProvider({ children }: { children: React.ReactNode }) {
     isLoading: isLoadingOrders,
     error: ordersError,
     refetch: refetchOrders,
-  } = useOrders(orderFilters)
+  } = useOrders(orderFilters, { enabled: !!session?.user })
 
   // Fetch current order
   const {

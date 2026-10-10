@@ -79,6 +79,7 @@ export default function ComparePage() {
       name: product.name,
       price: product.price,
       image: product.image || '📦',
+      maxQuantity: product.stockQuantity,
       sku: product.sku,
     })
     toast.success(`${product.name} added to cart`)
@@ -129,7 +130,10 @@ export default function ComparePage() {
               </Button>
 
               <CardContent className="p-6">
-                <Link href={`/products/${product.slug}`} className="block mb-4">
+                <Link
+                  href={`/products/${product.slug || product.id}`}
+                  className="block mb-4"
+                >
                   <div className="aspect-square bg-orange-50 rounded-lg flex items-center justify-center mb-4 relative overflow-hidden">
                     {product.image && product.image.startsWith('http') ? (
                       <Image
@@ -217,7 +221,7 @@ export default function ComparePage() {
                   </Button>
                   <div className="flex gap-2">
                     <Button variant="outline" className="flex-1" asChild>
-                      <Link href={`/products/${product.slug}`}>
+                      <Link href={`/products/${product.slug || product.id}`}>
                         <ExternalLink className="h-4 w-4 mr-2" />
                         View Details
                       </Link>
@@ -385,12 +389,3 @@ export default function ComparePage() {
     </div>
   )
 }
-
-
-
-
-
-
-
-
-

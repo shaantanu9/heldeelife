@@ -2,9 +2,11 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth-options'
 import { supabaseAdmin } from '@/lib/supabase/server'
-import { createCachedResponse } from '@/lib/utils/cache-headers'
-import { REVALIDATE_TIMES } from '@/lib/constants'
-
+import { z } from 'zod'
+import { computeOrderTotals } from '@/lib/commerce/totals'
+import { createOrderAccessToken } from '@/lib/commerce/order-access'
+import { validateCouponForOrder } from '@/lib/commerce/coupons'
+import { isPaymentGatewayConfigured } from '@/lib/commerce/razorpay'
 
 // GET /api/orders - Get orders (user's own or all for admin)
 export async function GET(request: NextRequest) {
@@ -24,8 +26,12 @@ export async function GET(request: NextRequest) {
     const day = searchParams.get('day') // Format: YYYY-MM-DD
     const startDate = searchParams.get('start_date')
     const endDate = searchParams.get('end_date')
-    const page = parseInt(searchParams.get('page') || '1')
-    const limit = parseInt(searchParams.get('limit') || '50')
+    const scope = searchParams.get('scope')
+    const page = Math.max(1, parseInt(searchParams.get('page') || '1') || 1)
+    const limit = Math.min(
+      100,
+      Math.max(1, parseInt(searchParams.get('limit') || '50') || 50)
+    )
     const offset = (page - 1) * limit
 
     // Build query
@@ -50,8 +56,9 @@ export async function GET(request: NextRequest) {
       )
       .order('created_at', { ascending: false })
 
-    // Users can only see their own orders, admins can see all
-    if (session.user.role !== 'admin') {
+    // Users only see their own orders. Admins see all, unless a customer-facing
+    // page asks for scope=mine ("My Orders" for an admin's own account).
+    if (session.user.role !== 'admin' || scope === 'mine') {
       query = query.eq('user_id', session.user.id)
     }
 
@@ -66,9 +73,14 @@ export async function GET(request: NextRequest) {
 
     // Search functionality (order number, customer name, email)
     if (search) {
-      query = query.or(
-        `order_number.ilike.%${search}%,customer_name.ilike.%${search}%,customer_email.ilike.%${search}%`
-      )
+      // Strip PostgREST filter syntax characters so input can't break or
+      // extend the .or() expression.
+      const term = search.replace(/[,()*%\\]/g, ' ').trim()
+      if (term) {
+        query = query.or(
+          `order_number.ilike.%${term}%,customer_name.ilike.%${term}%,customer_email.ilike.%${term}%`
+        )
+      }
     }
 
     // Date filters
@@ -124,8 +136,9 @@ export async function GET(request: NextRequest) {
     // Calculate total pages
     const totalPages = count ? Math.ceil(count / limit) : 1
 
-    // Use private caching for user-specific data (2 minutes, browser-only)
-    return createCachedResponse(
+    // Per-user data: never cache (a shared browser would otherwise serve one
+    // account's orders to the next, and lists go stale after cancellations).
+    return NextResponse.json(
       {
         orders: filteredOrders,
         pagination: {
@@ -135,12 +148,7 @@ export async function GET(request: NextRequest) {
           totalPages,
         },
       },
-      {
-        public: false, // Private cache (user-specific)
-        maxAge: REVALIDATE_TIMES.orders, // 2 minutes
-        staleWhileRevalidate: 300, // 5 minutes
-        mustRevalidate: false,
-      }
+      { headers: { 'Cache-Control': 'no-store' } }
     )
   } catch (error) {
     console.error('Error in GET /api/orders:', error)
@@ -152,259 +160,235 @@ export async function GET(request: NextRequest) {
 }
 
 // POST /api/orders - Create new order (authenticated or guest)
+//
+// Security model: the client only says WHAT it wants (product ids,
+// quantities, address, payment method, coupon code). Every price, discount,
+// shipping fee and total is computed here from the database, and stock +
+// coupon limits are enforced atomically by the place_order() SQL function.
+const addressSchema = z
+  .object({
+    name: z.string().trim().max(120).optional(),
+    full_name: z.string().trim().max(120).optional(),
+    email: z.string().trim().max(254).optional(),
+    phone: z.string().trim().max(20).optional(),
+  })
+  .passthrough()
+
+const orderSchema = z.object({
+  items: z
+    .array(
+      z.object({
+        product_id: z.string().uuid().optional(),
+        id: z.string().uuid().optional(),
+        quantity: z.coerce.number().int().min(1).max(100),
+      })
+    )
+    .min(1, 'Order items are required')
+    .max(50),
+  shipping_address: addressSchema,
+  billing_address: addressSchema.optional().nullable(),
+  payment_method: z.enum(['cod', 'online']).default('cod'),
+  coupon_code: z.string().trim().max(50).optional().nullable(),
+  notes: z.string().max(1000).optional().nullable(),
+})
+
 export async function POST(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
 
-    const body = await request.json()
+    const parsed = orderSchema.safeParse(await request.json().catch(() => null))
+    if (!parsed.success) {
+      const issue = parsed.error.issues[0]
+      return NextResponse.json(
+        {
+          error:
+            issue?.path[0] === 'items'
+              ? 'Order items are required'
+              : issue?.path[0] === 'shipping_address'
+                ? 'Shipping address is required'
+                : issue?.message || 'Invalid order',
+        },
+        { status: 400 }
+      )
+    }
     const {
-      items,
       shipping_address,
       billing_address,
-      payment_method = 'cod',
-      subtotal,
-      tax_amount = 0,
-      shipping_amount = 0,
-      discount_amount = 0,
-      coupon_id,
+      payment_method,
+      coupon_code,
       notes,
-    } = body
-
-    // Validate required fields
-    if (!items || !Array.isArray(items) || items.length === 0) {
-      return NextResponse.json(
-        { error: 'Order items are required' },
-        { status: 400 }
-      )
-    }
-
-    if (!shipping_address) {
-      return NextResponse.json(
-        { error: 'Shipping address is required' },
-        { status: 400 }
-      )
-    }
-
-    const isGuest = !session?.user
-    if (isGuest) {
-      const name =
-        shipping_address.name ?? shipping_address.full_name ?? null
-      const email = shipping_address.email ?? null
-      const phone = shipping_address.phone ?? null
-      if (!name || !email || !phone) {
-        return NextResponse.json(
-          {
-            error:
-              'Guest checkout requires name, email, and phone in shipping address',
-          },
-          { status: 400 }
-        )
-      }
-    }
-
-    // Validate product availability and stock
-    for (const item of items) {
-      const productId = item.product_id || item.id
-      if (!productId) continue
-
-      // Check product exists and is active
-      const { data: product, error: productError } = await supabaseAdmin
-        .from('products')
-        .select('id, name, is_active')
-        .eq('id', productId)
-        .single()
-
-      if (productError || !product) {
-        return NextResponse.json(
-          { error: `Product ${item.name || productId} not found` },
-          { status: 400 }
-        )
-      }
-
-      if (!product.is_active) {
-        return NextResponse.json(
-          { error: `Product ${product.name} is no longer available` },
-          { status: 400 }
-        )
-      }
-
-      // Check inventory availability
-      const { data: inventory } = await supabaseAdmin
-        .from('inventory')
-        .select('quantity, reserved_quantity')
-        .eq('product_id', productId)
-        .single()
-
-      if (inventory) {
-        const availableQuantity =
-          inventory.quantity - (inventory.reserved_quantity || 0)
-        if (availableQuantity < item.quantity) {
-          return NextResponse.json(
-            {
-              error: `Insufficient stock for ${product.name}. Available: ${availableQuantity}, Requested: ${item.quantity}`,
-            },
-            { status: 400 }
-          )
-        }
-      }
-    }
-
-    // Calculate total
-    const total_amount =
-      subtotal + tax_amount + shipping_amount - discount_amount
+    } = parsed.data
 
     const customerName =
       shipping_address.name ?? shipping_address.full_name ?? null
-    const customerEmail = shipping_address.email ?? null
+    const customerEmail = shipping_address.email ?? session?.user?.email ?? null
     const customerPhone = shipping_address.phone ?? null
 
-    // Create order (user_id null for guest checkout)
-    const { data: order, error: orderError } = await supabaseAdmin
-      .from('orders')
-      .insert({
-        user_id: session?.user?.id ?? null,
-        shipping_address,
-        billing_address: billing_address || shipping_address,
-        payment_method,
-        subtotal,
-        tax_amount,
-        shipping_amount,
-        discount_amount,
-        total_amount,
-        notes,
-        status: 'pending',
-        payment_status: payment_method === 'cod' ? 'pending' : 'pending',
-        customer_name: customerName,
-        customer_email: customerEmail,
-        customer_phone: customerPhone,
-      })
-      .select()
-      .single()
+    if (!session?.user && (!customerName || !customerEmail || !customerPhone)) {
+      return NextResponse.json(
+        {
+          error:
+            'Guest checkout requires name, email, and phone in shipping address',
+        },
+        { status: 400 }
+      )
+    }
 
-    if (orderError) {
-      console.error('Error creating order:', orderError)
+    if (payment_method === 'online' && !isPaymentGatewayConfigured()) {
+      return NextResponse.json(
+        {
+          error:
+            'Online payment is currently unavailable. Please choose Cash on Delivery.',
+        },
+        { status: 400 }
+      )
+    }
+
+    // Merge duplicate lines and collect quantities per product
+    const quantities = new Map<string, number>()
+    for (const item of parsed.data.items) {
+      const productId = item.product_id || item.id
+      if (!productId) {
+        return NextResponse.json(
+          { error: 'Each item needs a product_id' },
+          { status: 400 }
+        )
+      }
+      quantities.set(
+        productId,
+        (quantities.get(productId) || 0) + item.quantity
+      )
+    }
+
+    // Authoritative product data (price, name, availability)
+    const { data: products, error: productsError } = await supabaseAdmin
+      .from('products')
+      .select('id, name, sku, price, image, images, is_active, category_id')
+      .in('id', [...quantities.keys()])
+
+    if (productsError) {
+      console.error('Error loading products for order:', productsError)
       return NextResponse.json(
         { error: 'Failed to create order' },
         { status: 500 }
       )
     }
 
-    // Create order items with product images
-    const orderItems = await Promise.all(
-      items.map(async (item: any) => {
-        const productId = item.product_id || item.id
-        let productImage = item.image || item.product_image || null
+    const byId = new Map((products || []).map((p) => [p.id, p]))
+    for (const productId of quantities.keys()) {
+      const product = byId.get(productId)
+      if (!product) {
+        return NextResponse.json(
+          { error: `Product ${productId} not found` },
+          { status: 400 }
+        )
+      }
+      if (!product.is_active) {
+        return NextResponse.json(
+          { error: `Product ${product.name} is no longer available` },
+          { status: 400 }
+        )
+      }
+    }
 
-        // Fetch product image if not provided
-        if (!productImage && productId) {
-          const { data: product } = await supabaseAdmin
-            .from('products')
-            .select('image, images')
-            .eq('id', productId)
-            .single()
-
-          if (product) {
-            productImage = product.image || product.images?.[0] || null
-          }
-        }
-
+    const orderItems = [...quantities.entries()].map(
+      ([productId, quantity]) => {
+        const product = byId.get(productId)!
+        const unitPrice = Number(product.price)
         return {
-          order_id: order.id,
           product_id: productId,
-          product_name: item.name || item.product_name,
-          product_sku: item.sku || item.product_sku || null,
-          product_image: productImage,
-          quantity: item.quantity,
-          unit_price: item.price || item.unit_price,
-          total_price: (item.price || item.unit_price) * item.quantity,
-          discount_amount: item.discount_amount || 0,
+          product_name: product.name,
+          product_sku: product.sku || null,
+          product_image: product.image || product.images?.[0] || null,
+          category_id: product.category_id as string | null,
+          quantity,
+          unit_price: unitPrice,
+          total_price: Math.round(unitPrice * quantity * 100) / 100,
         }
+      }
+    )
+    const subtotal = orderItems.reduce((sum, item) => sum + item.total_price, 0)
+
+    // Coupon: validated server-side against the real subtotal
+    let couponId: string | null = null
+    let discount = 0
+    if (coupon_code) {
+      const coupon = await validateCouponForOrder(coupon_code, {
+        userId: session?.user?.id ?? null,
+        subtotal,
+        productIds: orderItems.map((i) => i.product_id),
+        categoryIds: orderItems
+          .map((i) => i.category_id)
+          .filter((c): c is string => Boolean(c)),
       })
+      if (!coupon.valid) {
+        return NextResponse.json(
+          { error: coupon.error || 'Invalid coupon code' },
+          { status: 400 }
+        )
+      }
+      couponId = coupon.couponId
+      discount = coupon.discount
+    }
+
+    const totals = computeOrderTotals(subtotal, discount)
+
+    // Opportunistically release stock held by abandoned online payments
+    supabaseAdmin
+      .rpc('expire_stale_online_orders', { p_minutes: 60 })
+      .then(({ error }) => {
+        if (error) console.error('expire_stale_online_orders failed:', error)
+      })
+
+    const { data: placed, error: placeError } = await supabaseAdmin.rpc(
+      'place_order',
+      {
+        p_order: {
+          user_id: session?.user?.id ?? null,
+          shipping_address,
+          billing_address: billing_address || shipping_address,
+          payment_method,
+          subtotal: totals.subtotal,
+          tax_amount: totals.tax,
+          shipping_amount: totals.shipping,
+          discount_amount: totals.discount,
+          total_amount: totals.total,
+          notes: notes || null,
+          customer_name: customerName,
+          customer_email: customerEmail,
+          customer_phone: customerPhone,
+          coupon_id: couponId,
+        },
+        p_items: orderItems.map(({ category_id: _c, ...item }) => item),
+      }
     )
 
-    const { error: itemsError } = await supabaseAdmin
-      .from('order_items')
-      .insert(orderItems)
-
-    if (itemsError) {
-      console.error('Error creating order items:', itemsError)
-      // Rollback order if items fail
-      await supabaseAdmin.from('orders').delete().eq('id', order.id)
+    if (placeError || !placed) {
+      const message = placeError?.message || ''
+      if (message.includes('OUT_OF_STOCK:')) {
+        const [, name, available] =
+          message.match(/OUT_OF_STOCK:(.*):(\d+)/) || []
+        return NextResponse.json(
+          {
+            error: `Insufficient stock for ${name || 'an item'}. Available: ${available ?? 0}`,
+          },
+          { status: 409 }
+        )
+      }
+      if (message.includes('COUPON_EXHAUSTED')) {
+        return NextResponse.json(
+          { error: 'This coupon has reached its usage limit' },
+          { status: 409 }
+        )
+      }
+      console.error('Error creating order:', placeError)
       return NextResponse.json(
-        { error: 'Failed to create order items' },
+        { error: 'Failed to create order' },
         { status: 500 }
       )
     }
 
-    // Record coupon usage if coupon was applied (authenticated users only)
-    if (coupon_id && discount_amount > 0 && session?.user?.id) {
-      try {
-        const { error: usageError } = await supabaseAdmin
-          .from('coupon_usage')
-          .insert({
-            coupon_id,
-            user_id: session.user.id,
-            order_id: order.id,
-            discount_amount,
-          })
-
-        if (usageError) {
-          // Log error but don't fail the order if coupon usage recording fails
-          // (coupon might have been used already, or there's a constraint issue)
-          console.error('Error recording coupon usage:', usageError)
-        } else {
-          // Increment coupon used count
-          const { data: coupon, error: fetchError } = await supabaseAdmin
-            .from('coupons')
-            .select('used_count')
-            .eq('id', coupon_id)
-            .single()
-
-          if (!fetchError && coupon) {
-            const { error: updateError } = await supabaseAdmin
-              .from('coupons')
-              .update({
-                used_count: (coupon.used_count || 0) + 1,
-              })
-              .eq('id', coupon_id)
-
-            if (updateError) {
-              console.error(
-                'Error incrementing coupon used count:',
-                updateError
-              )
-            }
-          }
-        }
-      } catch (error) {
-        // Log error but don't fail the order
-        console.error('Error processing coupon usage:', error)
-      }
-    }
-
-    // Reserve inventory for all orders at creation time
-    for (const item of items) {
-      const productId = item.product_id || item.id
-      if (productId) {
-        const { data: inventory } = await supabaseAdmin
-          .from('inventory')
-          .select('id, quantity, reserved_quantity')
-          .eq('product_id', productId)
-          .single()
-
-        if (inventory) {
-          await supabaseAdmin
-            .from('inventory')
-            .update({
-              reserved_quantity:
-                (inventory.reserved_quantity || 0) + item.quantity,
-            })
-            .eq('id', inventory.id)
-        }
-      }
-    }
-
-    // Fetch complete order with items
+    const orderId = (placed as { id: string }).id
     const { data: completeOrder } = await supabaseAdmin
       .from('orders')
       .select(
@@ -415,17 +399,24 @@ export async function POST(request: NextRequest) {
           product_id,
           product_name,
           product_sku,
+          product_image,
           quantity,
           unit_price,
           total_price
         )
       `
       )
-      .eq('id', order.id)
+      .eq('id', orderId)
       .single()
 
-    // New orders should not be cached
-    return NextResponse.json({ order: completeOrder }, { status: 201 })
+    return NextResponse.json(
+      {
+        order: completeOrder,
+        // Lets a guest pay for / view / track this order without a session
+        access_token: createOrderAccessToken(orderId),
+      },
+      { status: 201, headers: { 'Cache-Control': 'no-store' } }
+    )
   } catch (error) {
     console.error('Error in POST /api/orders:', error)
     return NextResponse.json(

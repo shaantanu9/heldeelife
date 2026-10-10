@@ -1,51 +1,149 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { Suspense, useCallback, useEffect, useState } from 'react'
 import { useSession } from 'next-auth/react'
-import { useRouter, useSearchParams } from 'next/navigation'
-import { useTracking } from '@/contexts/tracking-context'
+import { useSearchParams } from 'next/navigation'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import { Loader2, Package, ArrowLeft, Search } from 'lucide-react'
 import Link from 'next/link'
 import { OrderStatusBadge, OrderTimeline } from '@/components/orders'
 
-export default function TrackingPage() {
-  const { data: session } = useSession()
-  const router = useRouter()
-  const searchParams = useSearchParams()
-  const { trackingStatus, isLoading, trackOrder, clearTracking } = useTracking()
-  const [orderIdInput, setOrderIdInput] = useState('')
-  const [orderNumberInput, setOrderNumberInput] = useState('')
+interface TrackedOrder {
+  id: string
+  order_number: string
+  status: string
+  created_at: string
+  shipped_at?: string | null
+  delivered_at?: string | null
+  cancelled_at?: string | null
+  tracking_number?: string | null
+  carrier?: string | null
+  estimated_delivery?: string | null
+  order_status_history?: Array<{
+    status: string
+    notes?: string | null
+    location?: string | null
+    created_at: string
+  }>
+}
 
+const STATUS_LABELS: Record<string, string> = {
+  pending: 'Order Placed',
+  confirmed: 'Order Confirmed',
+  processing: 'Processing',
+  shipped: 'Shipped',
+  delivered: 'Delivered',
+  cancelled: 'Cancelled',
+  refunded: 'Refunded',
+}
+
+/** Timeline from the recorded status history (falls back to timestamps) */
+function buildEvents(order: TrackedOrder) {
+  const history = [...(order.order_status_history || [])].sort((a, b) =>
+    a.created_at.localeCompare(b.created_at)
+  )
+  if (history.length > 0) {
+    return history.map((h) => ({
+      status: h.status,
+      label: STATUS_LABELS[h.status] || h.status,
+      timestamp: h.created_at,
+      description: h.notes || undefined,
+      location: h.location || undefined,
+    }))
+  }
+  return [
+    {
+      status: 'pending',
+      label: STATUS_LABELS.pending,
+      timestamp: order.created_at,
+    },
+    order.shipped_at && {
+      status: 'shipped',
+      label: STATUS_LABELS.shipped,
+      timestamp: order.shipped_at,
+    },
+    order.delivered_at && {
+      status: 'delivered',
+      label: STATUS_LABELS.delivered,
+      timestamp: order.delivered_at,
+    },
+    order.cancelled_at && {
+      status: 'cancelled',
+      label: STATUS_LABELS.cancelled,
+      timestamp: order.cancelled_at,
+    },
+  ].filter(Boolean) as Array<{
+    status: string
+    label: string
+    timestamp: string
+  }>
+}
+
+function TrackingContent() {
+  const { status: sessionStatus } = useSession()
+  const searchParams = useSearchParams()
+  const [reference, setReference] = useState(searchParams.get('orderId') || '')
+  const [email, setEmail] = useState('')
+  const [order, setOrder] = useState<TrackedOrder | null>(null)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+  const token = searchParams.get('token')
+
+  const track = useCallback(
+    async (ref: string, emailValue: string) => {
+      const value = ref.trim()
+      if (!value) return
+      setLoading(true)
+      setError('')
+      try {
+        const params = new URLSearchParams()
+        if (token) params.set('token', token)
+        if (emailValue.trim()) params.set('email', emailValue.trim())
+        const response = await fetch(
+          `/api/orders/${encodeURIComponent(value)}?${params.toString()}`,
+          { cache: 'no-store' }
+        )
+        if (response.ok) {
+          setOrder((await response.json()).order)
+        } else {
+          setOrder(null)
+          setError(
+            sessionStatus === 'authenticated'
+              ? 'We could not find that order on your account.'
+              : 'No order matches that order number and email.'
+          )
+        }
+      } catch {
+        setError('Something went wrong. Please try again.')
+      } finally {
+        setLoading(false)
+      }
+    },
+    [token, sessionStatus]
+  )
+
+  // Arriving from the order confirmation (?orderId=...&token=...)
   useEffect(() => {
     const orderId = searchParams.get('orderId')
-    if (orderId) {
-      trackOrder(orderId)
-      setOrderIdInput(orderId)
-    }
-  }, [searchParams, trackOrder])
+    if (orderId && sessionStatus !== 'loading') track(orderId, '')
+  }, [searchParams, sessionStatus, track])
 
-  const handleTrack = () => {
-    if (orderIdInput.trim()) {
-      trackOrder(orderIdInput.trim())
-    } else if (orderNumberInput.trim()) {
-      // If order number is provided, we'd need to fetch order ID first
-      // For now, treat it as order ID
-      trackOrder(orderNumberInput.trim())
-    }
-  }
+  const needsEmail = sessionStatus !== 'authenticated' && !token
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-orange-50/40 py-8 md:py-16">
       <div className="container px-4">
         <Link
-          href="/orders"
+          href={sessionStatus === 'authenticated' ? '/profile/orders' : '/shop'}
           className="inline-flex items-center gap-2 text-gray-600 hover:text-orange-600 mb-8 transition-colors"
         >
           <ArrowLeft className="h-4 w-4" />
-          Back to Orders
+          {sessionStatus === 'authenticated'
+            ? 'Back to My Orders'
+            : 'Continue Shopping'}
         </Link>
 
         <div className="max-w-4xl mx-auto space-y-6">
@@ -54,12 +152,13 @@ export default function TrackingPage() {
               Track Your Order
             </h1>
             <p className="text-gray-600">
-              Enter your order number or order ID to track your shipment
+              Enter your order number
+              {needsEmail ? ' and the email used at checkout' : ''} to see its
+              status.
             </p>
           </div>
 
-          {/* Track Order Form */}
-          {!trackingStatus && (
+          {!order && (
             <Card className="border-gray-200 shadow-xl bg-white">
               <CardHeader>
                 <CardTitle className="text-xl text-gray-900 flex items-center gap-2">
@@ -67,187 +166,113 @@ export default function TrackingPage() {
                   Enter Order Details
                 </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-4">
-                <div>
-                  <label className="block text-sm font-semibold text-gray-900 mb-2">
-                    Order ID or Order Number
-                  </label>
-                  <Input
-                    type="text"
-                    placeholder="Enter order ID or order number"
-                    value={orderIdInput || orderNumberInput}
-                    onChange={(e) => {
-                      setOrderIdInput(e.target.value)
-                      setOrderNumberInput(e.target.value)
-                    }}
-                    className="rounded-lg"
-                  />
-                </div>
-                <Button
-                  onClick={handleTrack}
-                  className="w-full rounded-lg bg-orange-600 hover:bg-orange-700 text-white"
-                  disabled={!orderIdInput.trim() && !orderNumberInput.trim()}
-                >
-                  Track Order
-                </Button>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Loading State */}
-          {isLoading && (
-            <Card className="border-gray-200 shadow-xl bg-white">
-              <CardContent className="p-12 text-center">
-                <Loader2 className="h-8 w-8 animate-spin text-orange-600 mx-auto mb-4" />
-                <p className="text-gray-600">Loading order details...</p>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Tracking Status */}
-          {trackingStatus && !isLoading && (
-            <>
-              {/* Order Header */}
-              <Card className="border-gray-200 shadow-xl bg-white">
-                <CardHeader>
-                  <div className="flex items-center justify-between flex-wrap gap-4">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-3 mb-2">
-                        <CardTitle className="text-2xl text-gray-900">
-                          Order #{trackingStatus.orderNumber}
-                        </CardTitle>
-                        <OrderStatusBadge
-                          status={trackingStatus.currentStatus}
-                          size="lg"
-                        />
-                      </div>
-                      <p className="text-sm text-gray-600">
-                        Track your order status in real-time
-                      </p>
-                    </div>
-                  </div>
-                </CardHeader>
-              </Card>
-
-              {/* Tracking Timeline */}
-              <Card className="border-gray-200 shadow-xl bg-white">
-                <CardHeader>
-                  <CardTitle className="text-xl text-gray-900">
-                    Order Status Timeline
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <OrderTimeline
-                    currentStatus={trackingStatus.currentStatus}
-                    events={trackingStatus.events}
-                    trackingNumber={trackingStatus.trackingNumber}
-                    estimatedDelivery={trackingStatus.estimatedDelivery}
-                  />
-                </CardContent>
-              </Card>
-
-              {/* Tracking Details */}
-              {(trackingStatus.trackingNumber ||
-                trackingStatus.carrier ||
-                trackingStatus.estimatedDelivery) && (
-                <Card className="border-gray-200 shadow-xl bg-white">
-                  <CardHeader>
-                    <CardTitle className="text-xl text-gray-900">
-                      Shipping Information
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-3">
-                    {trackingStatus.trackingNumber && (
-                      <div className="flex justify-between items-center">
-                        <span className="text-gray-600">Tracking Number:</span>
-                        <span className="font-mono font-semibold text-gray-900">
-                          {trackingStatus.trackingNumber}
-                        </span>
-                      </div>
-                    )}
-                    {trackingStatus.carrier && (
-                      <div className="flex justify-between items-center">
-                        <span className="text-gray-600">Carrier:</span>
-                        <span className="font-semibold text-gray-900">
-                          {trackingStatus.carrier}
-                        </span>
-                      </div>
-                    )}
-                    {trackingStatus.estimatedDelivery && (
-                      <div className="flex justify-between items-center">
-                        <span className="text-gray-600">
-                          Estimated Delivery:
-                        </span>
-                        <span className="font-semibold text-gray-900">
-                          {new Date(
-                            trackingStatus.estimatedDelivery
-                          ).toLocaleDateString('en-IN', {
-                            year: 'numeric',
-                            month: 'long',
-                            day: 'numeric',
-                          })}
-                        </span>
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-              )}
-
-              {/* Actions */}
-              <Card className="border-gray-200 shadow-xl bg-white">
-                <CardContent className="p-6">
-                  <div className="flex gap-4">
-                    <Button
-                      variant="outline"
-                      className="flex-1"
-                      onClick={() => {
-                        clearTracking()
-                        setOrderIdInput('')
-                        setOrderNumberInput('')
-                      }}
-                    >
-                      Track Another Order
-                    </Button>
-                    <Button
-                      asChild
-                      className="flex-1 bg-orange-600 hover:bg-orange-700"
-                    >
-                      <Link href={`/orders/${trackingStatus.orderId}`}>
-                        View Order Details
-                      </Link>
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            </>
-          )}
-
-          {/* No Results */}
-          {!trackingStatus && !isLoading && orderIdInput && (
-            <Card className="border-gray-200 shadow-xl bg-white">
-              <CardContent className="p-12 text-center">
-                <Package className="h-16 w-16 mx-auto text-gray-300 mb-4" />
-                <h2 className="text-2xl font-bold text-gray-900 mb-2">
-                  Order Not Found
-                </h2>
-                <p className="text-gray-600 mb-6">
-                  We couldn&apos;t find an order with that ID. Please check and
-                  try again.
-                </p>
-                <Button
-                  variant="outline"
-                  onClick={() => {
-                    setOrderIdInput('')
-                    setOrderNumberInput('')
+              <CardContent>
+                <form
+                  className="space-y-4"
+                  onSubmit={(e) => {
+                    e.preventDefault()
+                    track(reference, email)
                   }}
                 >
-                  Try Again
-                </Button>
+                  <div>
+                    <Label htmlFor="order-ref">Order number</Label>
+                    <Input
+                      id="order-ref"
+                      placeholder="e.g. ORD-20261010-000123"
+                      value={reference}
+                      onChange={(e) => setReference(e.target.value)}
+                      required
+                    />
+                  </div>
+                  {needsEmail && (
+                    <div>
+                      <Label htmlFor="order-email">Email</Label>
+                      <Input
+                        id="order-email"
+                        type="email"
+                        placeholder="you@example.com"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        required
+                      />
+                    </div>
+                  )}
+                  {error && <p className="text-sm text-red-600">{error}</p>}
+                  <Button
+                    type="submit"
+                    className="w-full bg-orange-600 hover:bg-orange-700"
+                    disabled={loading || !reference.trim()}
+                  >
+                    {loading ? (
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    ) : (
+                      <Package className="h-4 w-4 mr-2" />
+                    )}
+                    Track Order
+                  </Button>
+                </form>
               </CardContent>
             </Card>
+          )}
+
+          {order && (
+            <>
+              <Card className="border-gray-200 shadow-xl bg-white">
+                <CardContent className="p-6 flex flex-wrap items-center justify-between gap-4">
+                  <div>
+                    <p className="text-sm text-gray-600">Order</p>
+                    <p className="text-xl font-bold text-gray-900">
+                      #{order.order_number}
+                    </p>
+                  </div>
+                  <OrderStatusBadge status={order.status} />
+                </CardContent>
+              </Card>
+
+              <Card className="border-gray-200 shadow-xl bg-white">
+                <CardContent className="p-6">
+                  <OrderTimeline
+                    currentStatus={order.status}
+                    events={buildEvents(order)}
+                    trackingNumber={order.tracking_number || undefined}
+                    estimatedDelivery={order.estimated_delivery || undefined}
+                  />
+                  {order.carrier && (
+                    <p className="mt-4 text-sm text-gray-600">
+                      Carrier:{' '}
+                      <span className="font-semibold">{order.carrier}</span>
+                    </p>
+                  )}
+                </CardContent>
+              </Card>
+
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setOrder(null)
+                  setReference('')
+                }}
+              >
+                Track another order
+              </Button>
+            </>
           )}
         </div>
       </div>
     </div>
+  )
+}
+
+export default function TrackingPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex justify-center py-24">
+          <Loader2 className="h-8 w-8 animate-spin text-orange-600" />
+        </div>
+      }
+    >
+      <TrackingContent />
+    </Suspense>
   )
 }

@@ -7,7 +7,7 @@ import {
   isSupabaseConnectionError,
   createSupabaseErrorResponse,
 } from '@/lib/utils/supabase-error-handler'
-
+import { sanitizePostgrestSearch } from '@/lib/utils/postgrest-search'
 
 // GET /api/products - List products with caching
 export async function GET(request: NextRequest) {
@@ -15,7 +15,8 @@ export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams
     const category = searchParams.get('category')
     const featured = searchParams.get('featured')
-    const search = searchParams.get('search')
+    const search = sanitizePostgrestSearch(searchParams.get('search') || '')
+    const exclude = searchParams.get('exclude')
     const limit = parseInt(searchParams.get('limit') || '50')
     const offset = parseInt(searchParams.get('offset') || '0')
 
@@ -43,11 +44,28 @@ export async function GET(request: NextRequest) {
       .range(offset, offset + limit - 1)
 
     if (category) {
-      query = query.eq('category_id', category)
+      // Accept a category id or (what the storefront links use) its slug
+      let categoryId: string | null = category
+      if (!/^[0-9a-f-]{36}$/i.test(category)) {
+        const { data: cat } = await supabaseAdmin
+          .from('product_categories')
+          .select('id')
+          .eq('slug', category)
+          .maybeSingle()
+        categoryId = cat?.id ?? null
+      }
+      if (!categoryId) {
+        return NextResponse.json({ products: [], count: 0 })
+      }
+      query = query.eq('category_id', categoryId)
     }
 
     if (featured === 'true') {
       query = query.eq('is_featured', true)
+    }
+
+    if (exclude) {
+      query = query.neq('id', exclude)
     }
 
     if (search) {
@@ -66,7 +84,10 @@ export async function GET(request: NextRequest) {
       // Handle errors thrown during query execution
       if (isSupabaseConnectionError(queryError)) {
         const errorResponse = createSupabaseErrorResponse(queryError)
-        console.error('Database connection error (thrown):', errorResponse.error)
+        console.error(
+          'Database connection error (thrown):',
+          errorResponse.error
+        )
         return NextResponse.json(
           {
             error: errorResponse.error,
@@ -84,7 +105,10 @@ export async function GET(request: NextRequest) {
     if (error) {
       if (isSupabaseConnectionError(error)) {
         const errorResponse = createSupabaseErrorResponse(error)
-        console.error('Database connection error (result.error):', errorResponse.error)
+        console.error(
+          'Database connection error (result.error):',
+          errorResponse.error
+        )
         return NextResponse.json(
           {
             error: errorResponse.error,
@@ -103,9 +127,21 @@ export async function GET(request: NextRequest) {
       )
     }
 
+    // Flatten nested inventory into the stock fields client widgets expect
+    const mappedProducts = (products || []).map((p: any) => {
+      const inv = Array.isArray(p.inventory) ? p.inventory[0] : p.inventory
+      const available = inv?.available_quantity ?? 0
+      return {
+        ...p,
+        product_id: p.id,
+        inStock: available > 0,
+        stockQuantity: available,
+      }
+    })
+
     // Return with cache headers
     return createCachedResponse(
-      { products: products || [], count: count || 0 },
+      { products: mappedProducts, count: count || 0 },
       'dynamic'
     )
   } catch (error) {

@@ -36,7 +36,10 @@ export async function GET(request: NextRequest) {
 
       const orderIds = userOrders?.map((o) => o.id) || []
       if (orderIds.length === 0) {
-        return NextResponse.json({ refunds: [] })
+        return NextResponse.json(
+          { refunds: [] },
+          { headers: { 'Cache-Control': 'no-store' } }
+        )
       }
 
       query = query.in('order_id', orderIds)
@@ -66,7 +69,11 @@ export async function GET(request: NextRequest) {
       rejection_reason: refund.rejection_reason,
     }))
 
-    return NextResponse.json({ refunds: transformedRefunds || [] })
+    // Per-user data: never cache (shared browsers / cross-user leaks)
+    return NextResponse.json(
+      { refunds: transformedRefunds || [] },
+      { headers: { 'Cache-Control': 'no-store' } }
+    )
   } catch (error) {
     console.error('Error in GET /api/refunds:', error)
     return NextResponse.json(
@@ -118,17 +125,32 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Check if refund already exists
-    const { data: existing } = await supabaseAdmin
+    // Block duplicates: any refund that is pending, approved or already
+    // processed for this order prevents a new request (only rejected ones
+    // may be re-requested).
+    const { data: existing, error: existingError } = await supabaseAdmin
       .from('refunds')
-      .select('id')
+      .select('id, status')
       .eq('order_id', order_id)
-      .eq('status', 'pending')
-      .single()
+      .in('status', ['pending', 'approved', 'processed'])
+      .limit(1)
 
-    if (existing) {
+    if (existingError) {
+      console.error('Error checking existing refunds:', existingError)
       return NextResponse.json(
-        { error: 'A pending refund request already exists for this order' },
+        { error: 'Failed to create refund request' },
+        { status: 500 }
+      )
+    }
+
+    if (existing && existing.length > 0) {
+      return NextResponse.json(
+        {
+          error:
+            existing[0].status === 'pending'
+              ? 'A pending refund request already exists for this order'
+              : 'A refund has already been approved or processed for this order',
+        },
         { status: 400 }
       )
     }
@@ -155,7 +177,10 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    return NextResponse.json({ refund })
+    return NextResponse.json(
+      { refund },
+      { headers: { 'Cache-Control': 'no-store' } }
+    )
   } catch (error) {
     console.error('Error in POST /api/refunds:', error)
     return NextResponse.json(
@@ -164,12 +189,3 @@ export async function POST(request: NextRequest) {
     )
   }
 }
-
-
-
-
-
-
-
-
-

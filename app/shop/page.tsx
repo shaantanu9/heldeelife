@@ -85,7 +85,13 @@ async function ShopContent({
   return (
     <>
       <JsonLd data={structuredData} />
-      <ShopClient products={products} categories={categories} />
+      {/* Remount when the server-side filters change so client filter state
+          is re-initialised from the new URL instead of going stale. */}
+      <ShopClient
+        key={`${category ?? ''}|${search ?? ''}`}
+        products={products}
+        categories={categories}
+      />
     </>
   )
 }

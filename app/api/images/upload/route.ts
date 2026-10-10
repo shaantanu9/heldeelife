@@ -3,6 +3,8 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth-options'
 import { ImageKitService } from '@/lib/imagekit-service'
 
+const REVIEW_UPLOAD_FOLDER = 'reviews'
+
 export async function POST(request: NextRequest) {
   try {
     // Check authentication
@@ -11,18 +13,24 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    // Only admins can upload images
-    if (session.user.role !== 'admin') {
+    const isAdmin = session.user.role === 'admin'
+
+    const formData = await request.formData()
+    const file = formData.get('file') as File
+    const folder = (formData.get('folder') as string) || 'heldeelife'
+
+    // Admins can upload anywhere. Other signed-in users may only upload
+    // review photos, into the dedicated 'reviews' folder.
+    if (!isAdmin && folder !== REVIEW_UPLOAD_FOLDER) {
       return NextResponse.json(
         { error: 'Forbidden: Admin access required' },
         { status: 403 }
       )
     }
 
-    const formData = await request.formData()
-    const file = formData.get('file') as File
-    const folder = (formData.get('folder') as string) || 'heldeelife'
-    const tags = (formData.get('tags') as string)?.split(',') || ['blog']
+    const tags = isAdmin
+      ? (formData.get('tags') as string)?.split(',') || ['blog']
+      : ['review', `user-${session.user.id}`]
 
     if (!file) {
       return NextResponse.json({ error: 'No file provided' }, { status: 400 })
@@ -80,12 +88,3 @@ export async function POST(request: NextRequest) {
     )
   }
 }
-
-
-
-
-
-
-
-
-

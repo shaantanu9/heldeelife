@@ -1,6 +1,7 @@
 import type { NextAuthOptions } from 'next-auth'
 import CredentialsProvider from 'next-auth/providers/credentials'
 import { supabaseAdmin } from '@/lib/supabase/server'
+import { createIsolatedAuthClient } from '@/lib/supabase/auth-client'
 import {
   toEmailFormat,
   extractPhoneFromEmail,
@@ -27,9 +28,13 @@ export const authOptions: NextAuthOptions = {
             ? normalizePhoneNumber(credentials.emailOrPhone)
             : null
 
-          // Sign in with Supabase
+          // Verify the password with a throwaway per-request client.
+          // NEVER use supabaseAdmin.auth.signInWithPassword: it stores the
+          // user's session on the shared service-role client, so every later
+          // supabaseAdmin query would run with this user's JWT.
+          const authClient = createIsolatedAuthClient()
           const { data: authData, error: authError } =
-            await supabaseAdmin.auth.signInWithPassword({
+            await authClient.auth.signInWithPassword({
               email,
               password: credentials.password,
             })
@@ -142,7 +147,7 @@ export const authOptions: NextAuthOptions = {
     maxAge: 30 * 24 * 60 * 60, // 30 days
   },
   callbacks: {
-    async jwt({ token, user }) {
+    async jwt({ token, user, trigger }) {
       if (user) {
         token.id = user.id
         token.email = user.email
@@ -152,19 +157,32 @@ export const authOptions: NextAuthOptions = {
         token.roleRefreshedAt = Date.now()
       }
 
-      // Re-fetch role from DB every 5 minutes to prevent stale admin tokens
+      // Re-fetch role from DB every 5 minutes to prevent stale admin tokens.
+      // On an explicit session update (useSession().update(), e.g. after the
+      // profile settings page saves) refresh name/phone from the DB too.
+      // Client-supplied update payloads are intentionally ignored so a user
+      // cannot elevate their own role or spoof profile data.
       const ROLE_REFRESH_INTERVAL = 5 * 60 * 1000
       const lastRefresh = token.roleRefreshedAt ?? 0
-      if (token.id && Date.now() - lastRefresh > ROLE_REFRESH_INTERVAL) {
+      const isUpdate = trigger === 'update'
+      if (
+        token.id &&
+        (isUpdate || Date.now() - lastRefresh > ROLE_REFRESH_INTERVAL)
+      ) {
         try {
           const { data: userProfile } = await supabaseAdmin
             .from('users')
-            .select('role')
+            .select('role, full_name, phone_number')
             .eq('id', token.id)
             .single()
 
           if (userProfile) {
             token.role = (userProfile.role as 'user' | 'admin') || 'user'
+            if (isUpdate) {
+              token.name = userProfile.full_name ?? token.name ?? null
+              token.phoneNumber =
+                userProfile.phone_number ?? token.phoneNumber ?? null
+            }
           }
           token.roleRefreshedAt = Date.now()
         } catch (error) {

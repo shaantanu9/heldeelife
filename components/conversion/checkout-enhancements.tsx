@@ -89,6 +89,9 @@ export function CheckoutRiskReversal({ className }: RiskReversalProps) {
 interface OrderSummaryEnhancedProps {
   subtotal: number
   tax: number
+  shipping?: number
+  /** Prices already contain GST (Indian MRP); tax is shown as included */
+  taxIncluded?: boolean
   discount: number
   finalTotal: number
   itemCount: number
@@ -102,6 +105,8 @@ interface OrderSummaryEnhancedProps {
 export function OrderSummaryEnhanced({
   subtotal,
   tax,
+  shipping = 0,
+  taxIncluded = true,
   discount,
   finalTotal,
   itemCount,
@@ -143,19 +148,29 @@ export function OrderSummaryEnhanced({
             {formatPrice(subtotal)}
           </span>
         </div>
-        <div className="flex justify-between text-sm">
-          <span className="text-gray-600">Shipping</span>
-          <span className="text-green-600 font-semibold">FREE</span>
-        </div>
-        <div className="flex justify-between text-sm">
-          <span className="text-gray-600">Tax (GST 18%)</span>
-          <span className="text-gray-900 font-medium">{formatPrice(tax)}</span>
-        </div>
         {discount > 0 && (
           <div className="flex justify-between text-sm">
             <span className="text-gray-600">Discount</span>
             <span className="text-green-600 font-semibold">
               - {formatPrice(discount)}
+            </span>
+          </div>
+        )}
+        <div className="flex justify-between text-sm">
+          <span className="text-gray-600">Shipping</span>
+          {shipping > 0 ? (
+            <span className="text-gray-900 font-medium">
+              {formatPrice(shipping)}
+            </span>
+          ) : (
+            <span className="text-green-600 font-semibold">FREE</span>
+          )}
+        </div>
+        {!taxIncluded && (
+          <div className="flex justify-between text-sm">
+            <span className="text-gray-600">Tax (GST)</span>
+            <span className="text-gray-900 font-medium">
+              {formatPrice(tax)}
             </span>
           </div>
         )}
@@ -170,7 +185,9 @@ export function OrderSummaryEnhanced({
               {formatPrice(finalTotal)}
             </div>
             <p className="text-xs text-gray-500 mt-1">
-              Including all taxes
+              {taxIncluded
+                ? `Inclusive of GST (${formatPrice(tax)})`
+                : 'Including all taxes'}
             </p>
           </div>
         </div>
@@ -187,9 +204,7 @@ interface UrgencyIndicatorProps {
  * Urgency Indicator
  * Research: Creates urgency, increases immediate purchases by 10-20%
  */
-export function CheckoutUrgencyIndicator({
-  className,
-}: UrgencyIndicatorProps) {
+export function CheckoutUrgencyIndicator({ className }: UrgencyIndicatorProps) {
   // Simulate low stock or time-sensitive offer
   const showUrgency = Math.random() > 0.5 // Random for demo, replace with real logic
 
@@ -266,4 +281,3 @@ export function RecentOrdersSocialProof({ className }: RecentOrdersProps) {
     </div>
   )
 }
-

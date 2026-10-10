@@ -20,13 +20,29 @@ import { cn } from '@/lib/utils'
 // Order Success Celebration - Positive reinforcement
 export function OrderSuccessCelebration({
   orderNumber,
+  paymentStatus,
+  paymentMethod,
   className,
 }: {
   orderNumber: string
+  paymentStatus?: string
+  paymentMethod?: string
   className?: string
 }) {
+  // Never claim payment was received unless it actually was
+  const paymentLabel =
+    paymentStatus === 'paid'
+      ? 'Payment Received'
+      : paymentMethod === 'cod'
+        ? 'Pay on Delivery'
+        : 'Payment Pending'
   return (
-    <Card className={cn('border border-green-200 bg-gradient-to-br from-green-50 to-white', className)}>
+    <Card
+      className={cn(
+        'border border-green-200 bg-gradient-to-br from-green-50 to-white',
+        className
+      )}
+    >
       <CardContent className="p-8 text-center">
         <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-green-100 flex items-center justify-center">
           <CheckCircle2 className="h-12 w-12 text-green-600" />
@@ -38,9 +54,11 @@ export function OrderSuccessCelebration({
           Thank you for your purchase! Your order #{orderNumber} has been
           confirmed.
         </p>
-        <Badge className="bg-green-600 text-white px-4 py-2 text-sm">
+        <Badge
+          className={`${paymentStatus === 'paid' ? 'bg-green-600' : 'bg-orange-500'} text-white px-4 py-2 text-sm`}
+        >
           <CheckCircle2 className="h-4 w-4 mr-2" />
-          Payment Received
+          {paymentLabel}
         </Badge>
       </CardContent>
     </Card>
@@ -166,7 +184,9 @@ export function OrderTrustSignals({ className }: { className?: string }) {
         >
           <CardContent className="p-4">
             <div className="flex items-center gap-3">
-              <signal.icon className={cn('h-5 w-5 flex-shrink-0', signal.color)} />
+              <signal.icon
+                className={cn('h-5 w-5 flex-shrink-0', signal.color)}
+              />
               <span className="text-sm font-semibold text-gray-900">
                 {signal.text}
               </span>
@@ -350,12 +370,3 @@ export function OrderDownloadButton({
     </Button>
   )
 }
-
-
-
-
-
-
-
-
-

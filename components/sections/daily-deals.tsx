@@ -197,6 +197,7 @@ export function DailyDeals() {
                         name: product.name,
                         price: product.price,
                         image: product.image,
+                        maxQuantity: product.stockQuantity,
                       })
                     }
                     disabled={!product.inStock}

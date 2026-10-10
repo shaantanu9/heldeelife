@@ -14,6 +14,7 @@ import { Badge } from '@/components/ui/badge'
 import { Loader2, Search, Package, X } from 'lucide-react'
 import Image from 'next/image'
 import { useDebounce } from '@/hooks/use-debounce'
+import { formatPrice } from '@/lib/utils/pricing'
 
 interface Product {
   id: string
@@ -45,52 +46,39 @@ export function ProductSearchDialog({
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null)
   const debouncedSearch = useDebounce(searchQuery, 300)
 
-  // Fetch products
-  const fetchProducts = useCallback(async (query: string) => {
-    if (!query.trim()) {
-      // Fetch featured products when no query
+  // Fetch products (featured when the query is empty). The signal lets a
+  // newer request cancel a stale one so out-of-order responses can't
+  // overwrite the latest results.
+  const fetchProducts = useCallback(
+    async (query: string, signal: AbortSignal) => {
+      const url = query.trim()
+        ? `/api/products?search=${encodeURIComponent(query)}&limit=20`
+        : `/api/products?featured=true&limit=12`
+
       setIsLoading(true)
       try {
-        const response = await fetch(`/api/products?featured=true&limit=12`)
+        const response = await fetch(url, { signal })
         const data = await response.json()
+        if (signal.aborted) return
         setProducts(data.products || [])
       } catch (error) {
+        if (signal.aborted) return
         console.error('Error fetching products:', error)
         setProducts([])
       } finally {
-        setIsLoading(false)
+        if (!signal.aborted) setIsLoading(false)
       }
-      return
-    }
+    },
+    []
+  )
 
-    setIsLoading(true)
-    try {
-      const response = await fetch(
-        `/api/products?search=${encodeURIComponent(query)}&limit=20`
-      )
-      const data = await response.json()
-      setProducts(data.products || [])
-    } catch (error) {
-      console.error('Error searching products:', error)
-      setProducts([])
-    } finally {
-      setIsLoading(false)
-    }
-  }, [])
-
-  // Search when debounced query changes
+  // Fetch when the dialog opens and whenever the debounced query changes
   useEffect(() => {
-    if (open) {
-      fetchProducts(debouncedSearch)
-    }
+    if (!open) return
+    const controller = new AbortController()
+    fetchProducts(debouncedSearch, controller.signal)
+    return () => controller.abort()
   }, [debouncedSearch, open, fetchProducts])
-
-  // Load featured products when dialog opens
-  useEffect(() => {
-    if (open && !searchQuery) {
-      fetchProducts('')
-    }
-  }, [open, searchQuery, fetchProducts])
 
   const handleSelect = (product: Product) => {
     setSelectedProduct(product)
@@ -133,7 +121,9 @@ export function ProductSearchDialog({
           />
           {searchQuery && (
             <button
+              type="button"
               onClick={handleClear}
+              aria-label="Clear search"
               className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
             >
               <X className="h-4 w-4" />
@@ -161,7 +151,7 @@ export function ProductSearchDialog({
                   {selectedProduct.name}
                 </p>
                 <p className="text-sm text-gray-600">
-                  ₹{Number(selectedProduct.price).toFixed(2)}
+                  {formatPrice(Number(selectedProduct.price))}
                 </p>
               </div>
             </div>
@@ -225,7 +215,7 @@ export function ProductSearchDialog({
                         </Badge>
                       )}
                       <p className="text-sm text-gray-600 mt-1">
-                        ₹{Number(product.price).toFixed(2)}
+                        {formatPrice(Number(product.price))}
                       </p>
                       {product.short_description && (
                         <p className="text-xs text-gray-500 mt-1 line-clamp-2">
@@ -243,11 +233,3 @@ export function ProductSearchDialog({
     </Dialog>
   )
 }
-
-
-
-
-
-
-
-

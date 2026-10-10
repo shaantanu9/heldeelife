@@ -74,12 +74,3 @@ export async function DELETE(
     )
   }
 }
-
-
-
-
-
-
-
-
-

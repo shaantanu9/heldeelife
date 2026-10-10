@@ -195,6 +195,7 @@ export function ComparisonModal() {
       name: product.name,
       price: product.price,
       image: product.image || '📦',
+      maxQuantity: product.stockQuantity,
       sku: product.sku,
     })
     toast.success(`${product.name} added to cart`)
@@ -256,7 +257,7 @@ export function ComparisonModal() {
 
                 <CardContent className="p-4">
                   <Link
-                    href={`/products/${product.slug}`}
+                    href={`/products/${product.slug || product.id}`}
                     className="block mb-3"
                   >
                     <div className="aspect-square bg-orange-50 rounded-lg flex items-center justify-center mb-3 relative overflow-hidden">
@@ -333,7 +334,7 @@ export function ComparisonModal() {
                         className="flex-1"
                         asChild
                       >
-                        <Link href={`/products/${product.slug}`}>
+                        <Link href={`/products/${product.slug || product.id}`}>
                           <ExternalLink className="h-3 w-3 mr-2" />
                           View
                         </Link>
@@ -499,4 +500,3 @@ export function ComparisonModal() {
     </Dialog>
   )
 }
-

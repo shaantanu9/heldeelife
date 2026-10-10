@@ -3,64 +3,94 @@ import { Button } from '@/components/ui/button'
 import { ArrowRight, CheckCircle2 } from 'lucide-react'
 import Link from 'next/link'
 
-const categories = [
-  {
-    id: 1,
-    name: 'Cold Relief',
+import { getProductCategories } from '@/lib/api/server'
+
+type CategoryDecoration = {
+  icon: string
+  description: string
+  benefits: string[]
+  featured?: boolean
+}
+
+// Presentation details keyed by category slug (see product_categories seed data)
+const categoryDecorations: Record<string, CategoryDecoration> = {
+  'cold-relief': {
     icon: '🤧',
     description: 'Natural solutions for cold symptoms',
     benefits: ['Fast relief', '100% natural', 'No side effects'],
-    productCount: '50+ Products',
   },
-  {
-    id: 2,
-    name: 'Cough Relief',
+  'cough-relief': {
     icon: '😷',
     description: 'Effective cough management',
     benefits: ['Soothes throat', 'Reduces irritation', 'Ayurvedic formula'],
-    productCount: '45+ Products',
   },
-  {
-    id: 3,
-    name: 'Immunity Booster',
+  'immunity-booster': {
     icon: '💪',
     description:
-      'Strengthen your immune system naturally with our Ayurvedic solutions. Boost your body&apos;s natural defense mechanisms.',
+      "Strengthen your immune system naturally with our Ayurvedic solutions. Boost your body's natural defense mechanisms.",
     benefits: [
       'Natural ingredients',
       'Long-term benefits',
       'Doctor recommended',
     ],
-    productCount: '60+ Products',
     featured: true,
   },
-  {
-    id: 4,
-    name: 'Digestive Health',
+  'digestive-health': {
     icon: '🌿',
     description: 'Support your digestive wellness',
     benefits: ['Improves digestion', 'Reduces bloating', 'Natural enzymes'],
-    productCount: '40+ Products',
   },
-  {
-    id: 5,
-    name: 'Skin Care',
+  'skin-care': {
     icon: '✨',
     description: 'Radiant skin with Ayurvedic care',
     benefits: ['Glowing skin', 'Natural ingredients', 'Proven results'],
-    productCount: '55+ Products',
   },
-  {
-    id: 6,
-    name: 'Wellness Essentials',
+  'wellness-essentials': {
     icon: '🧘',
     description: 'Complete wellness solutions',
     benefits: ['Holistic approach', 'Daily wellness', 'Expert curated'],
-    productCount: '70+ Products',
   },
-]
+}
 
-export function Categories() {
+const defaultDecoration: CategoryDecoration = {
+  icon: '🌱',
+  description: 'Authentic Ayurvedic wellness products',
+  benefits: ['Natural ingredients', 'Quality assured'],
+}
+
+type CategoryCard = CategoryDecoration & {
+  id: string
+  name: string
+  slug: string
+}
+
+async function loadCategories(): Promise<CategoryCard[]> {
+  const rows = (await getProductCategories()) as Array<{
+    id: string
+    name: string
+    slug: string
+    description?: string | null
+    is_active?: boolean | null
+  }>
+
+  return rows
+    .filter((row) => row.slug && row.is_active !== false)
+    .map((row) => {
+      const decoration = categoryDecorations[row.slug] || {
+        ...defaultDecoration,
+        description: row.description || defaultDecoration.description,
+      }
+      return { ...decoration, id: row.id, name: row.name, slug: row.slug }
+    })
+}
+
+export async function Categories() {
+  const categories = await loadCategories()
+
+  if (categories.length === 0) {
+    return null
+  }
+
   return (
     <section className="py-24 bg-white">
       <div className="container px-4">
@@ -86,7 +116,7 @@ export function Categories() {
             {categories.map((category) => (
               <Link
                 key={category.id}
-                href={`/shop?category=${encodeURIComponent(category.name)}`}
+                href={`/shop?category=${encodeURIComponent(category.slug)}`}
               >
                 <Card
                   className={`h-full border border-gray-200 shadow-md hover:shadow-xl transition-all duration-300 cursor-pointer group ${
@@ -114,9 +144,6 @@ export function Categories() {
                         >
                           {category.name}
                         </h3>
-                        <p className="text-xs text-orange-600 font-medium mb-2">
-                          {category.productCount}
-                        </p>
                       </div>
                     </div>
 

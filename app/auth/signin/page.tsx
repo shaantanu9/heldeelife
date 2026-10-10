@@ -25,6 +25,7 @@ import {
   ArrowRight,
 } from 'lucide-react'
 import Link from 'next/link'
+import { sanitizeCallbackUrl } from '../callback-url'
 
 export default function SignInPage() {
   const router = useRouter()
@@ -54,7 +55,16 @@ export default function SignInPage() {
         )
         setLoading(false)
       } else if (result?.ok) {
-        router.push('/profile')
+        // Honour ?callbackUrl= (set by middleware / protected pages), but only
+        // for same-origin relative paths to avoid open redirects.
+        const params = new URLSearchParams(window.location.search)
+        router.push(
+          sanitizeCallbackUrl(
+            params.get('callbackUrl'),
+            '/profile',
+            window.location.origin
+          )
+        )
         router.refresh()
       }
     } catch (err: any) {

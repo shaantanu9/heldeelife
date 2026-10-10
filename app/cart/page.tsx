@@ -8,6 +8,9 @@ import { Badge } from '@/components/ui/badge'
 import { Minus, Plus, Trash2, AlertTriangle } from 'lucide-react'
 import { EmptyState } from '@/components/mobile/empty-states'
 import Link from 'next/link'
+import Image from 'next/image'
+import { computeOrderTotals } from '@/lib/commerce/totals'
+import { isImageUrl, needsUnoptimized } from '@/lib/utils/image-src'
 import { toast } from 'sonner'
 import {
   CartSocialProof,
@@ -50,6 +53,18 @@ export default function CartPage() {
         item.availableQuantity >= item.quantity
     ).length
   }, [cartItemsWithAvailability])
+
+  // Same calculation as checkout and the server
+  const totals = computeOrderTotals(totalPrice)
+  const checkoutBlocked =
+    cart.length === 0 ||
+    isValidating ||
+    cartItemsWithAvailability.some(
+      (item) =>
+        !item.available ||
+        !item.isActive ||
+        (item.availableQuantity || 0) < item.quantity
+    )
 
   const originalTotal = useMemo(() => {
     return cart.reduce((sum, item) => sum + item.price * item.quantity, 0)
@@ -158,9 +173,7 @@ export default function CartPage() {
           {/* Cart Items */}
           <div className="md:col-span-2 space-y-4">
             {/* Cart Abandonment Banner - Urgency after 2 minutes */}
-            {!isValidating && cart.length > 0 && (
-              <CartAbandonmentBanner />
-            )}
+            {!isValidating && cart.length > 0 && <CartAbandonmentBanner />}
 
             {/* Psychological Triggers - Social Proof & Trust */}
             {!isValidating && cart.length > 0 && (
@@ -206,8 +219,21 @@ export default function CartPage() {
                         href={`/products/${item.product_id || item.id}`}
                         className="flex-shrink-0"
                       >
-                        <div className="w-24 h-24 bg-orange-50 rounded-lg flex items-center justify-center flex-shrink-0 hover:bg-orange-100 transition-colors cursor-pointer">
-                          <span className="text-4xl">{item.image}</span>
+                        <div className="relative w-24 h-24 bg-orange-50 rounded-lg flex items-center justify-center flex-shrink-0 overflow-hidden hover:bg-orange-100 transition-colors cursor-pointer">
+                          {isImageUrl(item.image) ? (
+                            <Image
+                              src={item.image}
+                              alt={item.name}
+                              unoptimized={needsUnoptimized(item.image)}
+                              fill
+                              sizes="96px"
+                              className="object-contain p-1"
+                            />
+                          ) : (
+                            <span className="text-4xl" aria-hidden>
+                              {item.image || '📦'}
+                            </span>
+                          )}
                         </div>
                       </Link>
                       <div className="flex-1">
@@ -348,32 +374,41 @@ export default function CartPage() {
                   </div>
                   <div className="flex justify-between text-gray-600">
                     <span>Shipping</span>
-                    <span>Free</span>
+                    <span>
+                      {totals.shipping > 0
+                        ? `Rs. ${totals.shipping.toFixed(2)}`
+                        : 'Free'}
+                    </span>
                   </div>
                   <div className="border-t border-gray-200 pt-4 flex justify-between text-lg font-bold">
                     <span className="text-gray-900">Total</span>
                     <span className="text-orange-600">
-                      Rs. {totalPrice.toFixed(2)}
+                      Rs. {totals.total.toFixed(2)}
                     </span>
                   </div>
+                  <p className="text-xs text-gray-500 text-right -mt-2">
+                    Inclusive of GST. Coupons can be applied at checkout.
+                  </p>
                 </div>
-                <Button
-                  className="w-full rounded-lg bg-orange-600 hover:bg-orange-700 text-white font-semibold shadow-md hover:shadow-lg transition-all duration-200 mb-4"
-                  size="lg"
-                  asChild
-                  disabled={
-                    cart.length === 0 ||
-                    isValidating ||
-                    cartItemsWithAvailability.some(
-                      (item) =>
-                        !item.available ||
-                        !item.isActive ||
-                        (item.availableQuantity || 0) < item.quantity
-                    )
-                  }
-                >
-                  <Link href="/checkout">Proceed to Checkout</Link>
-                </Button>
+                {checkoutBlocked ? (
+                  // `disabled` has no effect on an asChild <Link>, so render a
+                  // real disabled button instead
+                  <Button
+                    className="w-full rounded-lg bg-orange-600 text-white font-semibold mb-4"
+                    size="lg"
+                    disabled
+                  >
+                    {isValidating ? 'Checking stock…' : 'Proceed to Checkout'}
+                  </Button>
+                ) : (
+                  <Button
+                    className="w-full rounded-lg bg-orange-600 hover:bg-orange-700 text-white font-semibold shadow-md hover:shadow-lg transition-all duration-200 mb-4"
+                    size="lg"
+                    asChild
+                  >
+                    <Link href="/checkout">Proceed to Checkout</Link>
+                  </Button>
+                )}
                 {!isValidating &&
                   cartItemsWithAvailability.some(
                     (item) =>

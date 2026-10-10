@@ -10,7 +10,14 @@ export async function POST(request: NextRequest) {
     if (!rateLimitResult.success) {
       return NextResponse.json(
         { error: 'Too many password reset attempts. Please try again later.' },
-        { status: 429, headers: { 'Retry-After': String(Math.ceil((rateLimitResult.reset - Date.now()) / 1000)) } }
+        {
+          status: 429,
+          headers: {
+            'Retry-After': String(
+              Math.ceil((rateLimitResult.reset - Date.now()) / 1000)
+            ),
+          },
+        }
       )
     }
 
@@ -37,22 +44,19 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Create a Supabase client with the access token
-    const supabaseUrl =
-      process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL
-    if (!supabaseUrl) {
-      throw new Error('Missing SUPABASE_URL')
+    if (typeof password !== 'string' || typeof accessToken !== 'string') {
+      return NextResponse.json({ error: 'Invalid request' }, { status: 400 })
     }
 
-    // Use the access token to create a session and update password
-    const { data: sessionData, error: sessionError } =
-      await supabaseAdmin.auth.setSession({
-        access_token: accessToken,
-        refresh_token: '', // Not needed for password update
-      })
+    // Verify the recovery access token WITHOUT creating a session on the
+    // shared service-role client. (supabaseAdmin.auth.setSession/updateUser
+    // would store this user's session on supabaseAdmin and make every later
+    // server-side query run under the user's JWT.)
+    const { data: userData, error: userError } =
+      await supabaseAdmin.auth.getUser(accessToken)
 
-    if (sessionError || !sessionData.session?.user) {
-      console.error('Session error:', sessionError)
+    if (userError || !userData?.user) {
+      console.error('Reset token verification error:', userError)
 
       // Mark attempt as failed if we have attemptId
       if (attemptId) {
@@ -78,12 +82,11 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const userId = sessionData.session.user.id
+    const userId = userData.user.id
 
-    // Update the user's password
-    const { error: updateError } = await supabaseAdmin.auth.updateUser({
-      password: password,
-    })
+    // Update the user's password via the admin API (no session involved)
+    const { error: updateError } =
+      await supabaseAdmin.auth.admin.updateUserById(userId, { password })
 
     if (updateError) {
       console.error('Password update error:', updateError)

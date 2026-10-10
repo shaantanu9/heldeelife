@@ -45,14 +45,17 @@ export function AbandonedCartRecovery() {
       // Restore items to cart
       clearCart()
       currentCart.items.forEach((item) => {
-        addToCart({
-          id: item.id,
-          product_id: item.product_id,
-          name: item.name,
-          price: item.price,
-          image: item.image,
-          sku: item.sku,
-        })
+        addToCart(
+          {
+            id: item.id,
+            product_id: item.product_id,
+            name: item.name,
+            price: item.price,
+            image: item.image,
+            sku: item.sku,
+          },
+          item.quantity
+        )
       })
 
       // Mark as recovered
@@ -235,12 +238,3 @@ export function AbandonedCartRecovery() {
     </Dialog>
   )
 }
-
-
-
-
-
-
-
-
-

@@ -58,7 +58,7 @@ interface SavedAddress {
 }
 
 export default function AddressesPage() {
-  const { data: session } = useSession()
+  const { data: session, status } = useSession()
   const router = useRouter()
   const [addresses, setAddresses] = useState<SavedAddress[]>([])
   const [loading, setLoading] = useState(true)
@@ -91,12 +91,17 @@ export default function AddressesPage() {
   })
 
   useEffect(() => {
+    // Wait for the session to load; only redirect when definitely signed out
+    if (status === 'unauthenticated') {
+      router.push(
+        `/auth/signin?callbackUrl=${encodeURIComponent(window.location.pathname)}`
+      )
+      return
+    }
     if (session) {
       fetchAddresses()
-    } else {
-      router.push('/auth/signin')
     }
-  }, [session, router])
+  }, [session, status, router])
 
   const fetchAddresses = async () => {
     try {

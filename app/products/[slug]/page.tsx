@@ -377,6 +377,8 @@ export default async function ProductPage({ params }: ProductPageProps) {
                     reviews_count: product.reviews_count || undefined,
                     sales_count: product.sales_count || undefined,
                     views_count: product.views_count || undefined,
+                    slug: product.slug,
+                    sku: product.sku || undefined,
                   }}
                 />
 

@@ -35,7 +35,7 @@ interface WishlistItem {
 }
 
 export default function WishlistPage() {
-  const { data: session } = useSession()
+  const { data: session, status } = useSession()
   const router = useRouter()
   const { addToCart } = useCart()
   const [wishlist, setWishlist] = useState<WishlistItem[]>([])
@@ -43,12 +43,16 @@ export default function WishlistPage() {
   const [removingIds, setRemovingIds] = useState<Set<string>>(new Set())
 
   useEffect(() => {
-    if (!session) {
-      router.push('/auth/signin')
+    // Wait for the session to load; only redirect when definitely signed out
+    if (status === 'unauthenticated') {
+      router.push(
+        `/auth/signin?callbackUrl=${encodeURIComponent(window.location.pathname)}`
+      )
       return
     }
+    if (!session) return
     fetchWishlist()
-  }, [session, router])
+  }, [session, status, router])
 
   const fetchWishlist = async () => {
     try {

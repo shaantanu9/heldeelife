@@ -1,6 +1,36 @@
 import { withAuth } from 'next-auth/middleware'
 import { NextResponse } from 'next/server'
-import { AB_COOKIE_NAME, AB_COOKIE_MAX_AGE, pickRandomVariant } from '@/lib/ab-testing/select-variant'
+import {
+  AB_COOKIE_NAME,
+  AB_COOKIE_MAX_AGE,
+  pickRandomVariant,
+} from '@/lib/ab-testing/select-variant'
+
+/**
+ * Routes that require a signed-in user. Unauthenticated requests are
+ * redirected by withAuth to /auth/signin?callbackUrl=<original url>.
+ */
+export function requiresAuth(path: string): boolean {
+  if (path === '/admin' || path.startsWith('/admin/')) return true
+  if (path === '/profile' || path.startsWith('/profile/')) return true
+  if (path === '/orders' || path.startsWith('/orders/')) {
+    // Guest checkout lands on /orders/success, so it must stay public.
+    if (path === '/orders/success' || path.startsWith('/orders/success/')) {
+      return false
+    }
+    return true
+  }
+  return false
+}
+
+function signInRedirect(req: { url: string; nextUrl: URL }) {
+  const signInUrl = new URL('/auth/signin', req.url)
+  signInUrl.searchParams.set(
+    'callbackUrl',
+    `${req.nextUrl.pathname}${req.nextUrl.search}`
+  )
+  return NextResponse.redirect(signInUrl)
+}
 
 export default withAuth(
   function middleware(req) {
@@ -10,9 +40,9 @@ export default withAuth(
 
     // Protect admin routes
     if (path.startsWith('/admin')) {
-      // If not authenticated, redirect to sign in
+      // If not authenticated, redirect to sign in (keeping callbackUrl)
       if (!token) {
-        return NextResponse.redirect(new URL('/auth/signin', req.url))
+        return signInRedirect(req)
       }
       // If authenticated but not admin, redirect to home
       if (!isAdmin) {
@@ -40,17 +70,17 @@ export default withAuth(
   },
   {
     callbacks: {
+      // Returning false makes withAuth redirect to pages.signIn with
+      // ?callbackUrl=<original url>.
       authorized: ({ token, req }) => {
-        const path = req.nextUrl.pathname
-
-        // Admin routes require authentication
-        if (path.startsWith('/admin')) {
+        if (requiresAuth(req.nextUrl.pathname)) {
           return !!token
         }
-
-        // Other routes don't require auth check here
         return true
       },
+    },
+    pages: {
+      signIn: '/auth/signin',
     },
   }
 )
@@ -60,6 +90,7 @@ export const config = {
     '/',
     '/admin/:path*',
     '/profile/:path*',
+    '/orders/:path*',
     '/cart/:path*',
     '/checkout/:path*',
   ],

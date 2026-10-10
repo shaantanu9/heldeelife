@@ -74,12 +74,3 @@ export function ShippingAddress({
     </Card>
   )
 }
-
-
-
-
-
-
-
-
-

@@ -15,11 +15,22 @@ export async function PUT(request: NextRequest) {
 
     // Rate limit: 10 profile updates per minute per user
     const ip = getRateLimitIdentifier(request)
-    const rateLimitResult = await rateLimit(`update-profile:${session?.user?.id || ip}`, 10, 60)
+    const rateLimitResult = await rateLimit(
+      `update-profile:${session?.user?.id || ip}`,
+      10,
+      60
+    )
     if (!rateLimitResult.success) {
       return NextResponse.json(
         { error: 'Too many update attempts. Please try again later.' },
-        { status: 429, headers: { 'Retry-After': String(Math.ceil((rateLimitResult.reset - Date.now()) / 1000)) } }
+        {
+          status: 429,
+          headers: {
+            'Retry-After': String(
+              Math.ceil((rateLimitResult.reset - Date.now()) / 1000)
+            ),
+          },
+        }
       )
     }
 
@@ -28,25 +39,20 @@ export async function PUT(request: NextRequest) {
 
     // Validate input
     if (!name || name.trim().length === 0) {
-      return NextResponse.json(
-        { error: 'Name is required' },
-        { status: 400 }
-      )
+      return NextResponse.json({ error: 'Name is required' }, { status: 400 })
     }
 
     // Normalize phone number if provided
     const phoneNumber = phone ? normalizePhoneNumber(phone) : null
 
-    // Update user metadata in Supabase Auth
-    const updateData: any = {
-      data: {
-        full_name: name,
-      },
-    }
-
+    // Update user metadata in Supabase Auth.
+    // NOTE: the admin API expects `user_metadata` (the `data` key is only for
+    // the user-facing updateUser() and is ignored by updateUserById).
+    const userMetadata: Record<string, string> = { full_name: name }
     if (phoneNumber) {
-      updateData.data.phone_number = phoneNumber
+      userMetadata.phone_number = phoneNumber
     }
+    const updateData = { user_metadata: userMetadata }
 
     const { error: authError } = await supabaseAdmin.auth.admin.updateUserById(
       session.user.id,
@@ -99,12 +105,3 @@ export async function PUT(request: NextRequest) {
     )
   }
 }
-
-
-
-
-
-
-
-
-

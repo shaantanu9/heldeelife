@@ -1,6 +1,7 @@
 'use client'
 
 import React from 'react'
+import { isImageUrl } from '@/lib/utils/image-src'
 import Image from 'next/image'
 import { Package } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -47,7 +48,7 @@ export function OrderItemCard({
             compact ? 'w-16 h-16' : 'w-20 h-20'
           )}
         >
-          {item.product_image && !imageError ? (
+          {isImageUrl(item.product_image) && !imageError ? (
             <div
               className={cn('relative', compact ? 'w-16 h-16' : 'w-20 h-20')}
             >

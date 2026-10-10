@@ -1,77 +1,117 @@
 /**
  * POST /api/payments/webhook
- * Razorpay webhook handler for payment events
- * This endpoint should be publicly accessible (no auth required)
- * but should verify webhook signature
+ * Razorpay webhook (public, signature-verified).
+ *
+ * Safety net for when the customer closes the tab before /verify runs.
+ * Handlers are idempotent; stock is never touched here — reservations are
+ * made by place_order() and moved by the order-status trigger.
+ *
+ * Requires RAZORPAY_WEBHOOK_SECRET (Razorpay Dashboard → Webhooks).
  */
 
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase/server'
-import crypto from 'crypto'
 import {
   errorResponse,
   successResponse,
   handleApiError,
   ApiError,
 } from '@/lib/utils/api-error'
+import { verifyWebhookSignature } from '@/lib/commerce/razorpay'
 
-const RAZORPAY_WEBHOOK_SECRET = process.env.RAZORPAY_WEBHOOK_SECRET
+interface PaymentEntity {
+  id: string
+  order_id?: string
+  status?: string
+  notes?: Record<string, string>
+}
 
-/**
- * Verify Razorpay webhook signature
- */
-function verifyWebhookSignature(payload: string, signature: string): boolean {
-  if (!RAZORPAY_WEBHOOK_SECRET) {
-    return false
+async function findOrder(razorpayOrderId?: string, internalId?: string) {
+  if (razorpayOrderId) {
+    const { data } = await supabaseAdmin
+      .from('orders')
+      .select('id, status, payment_status')
+      .eq('payment_id', razorpayOrderId)
+      .maybeSingle()
+    if (data) return data
   }
+  if (internalId) {
+    const { data } = await supabaseAdmin
+      .from('orders')
+      .select('id, status, payment_status')
+      .eq('id', internalId)
+      .maybeSingle()
+    if (data) return data
+  }
+  return null
+}
 
-  const generatedSignature = crypto
-    .createHmac('sha256', RAZORPAY_WEBHOOK_SECRET)
-    .update(payload)
-    .digest('hex')
+async function markPaid(payment: PaymentEntity, internalOrderId?: string) {
+  const order = await findOrder(payment.order_id, internalOrderId)
+  if (!order) {
+    console.warn('Webhook: no order for payment', payment.id, payment.order_id)
+    return
+  }
+  if (order.payment_status === 'paid') return
 
-  return generatedSignature === signature
+  await supabaseAdmin
+    .from('orders')
+    .update({
+      payment_status: 'paid',
+      payment_transaction_id: payment.id,
+      ...(order.status === 'pending' && { status: 'confirmed' }),
+    })
+    .eq('id', order.id)
+    .neq('payment_status', 'paid')
+}
+
+async function markFailed(payment: PaymentEntity) {
+  const order = await findOrder(payment.order_id, payment.notes?.order_id)
+  if (!order || order.payment_status === 'paid') return
+  // Keep the order pending so the customer can retry; stale unpaid orders
+  // are cancelled (and their stock released) by expire_stale_online_orders().
+  await supabaseAdmin
+    .from('orders')
+    .update({ payment_status: 'failed' })
+    .eq('id', order.id)
+    .neq('payment_status', 'paid')
 }
 
 export async function POST(request: NextRequest) {
   try {
-    // Get webhook signature from headers
-    const signature = request.headers.get('x-razorpay-signature')
-
-    if (!signature) {
-      return errorResponse(
-        new ApiError(401, 'Missing webhook signature', 'MISSING_SIGNATURE')
+    const rawBody = await request.text()
+    if (
+      !verifyWebhookSignature(
+        rawBody,
+        request.headers.get('x-razorpay-signature')
       )
-    }
-
-    // Get raw body for signature verification
-    const body = await request.text()
-
-    // Verify webhook signature
-    if (!verifyWebhookSignature(body, signature)) {
+    ) {
       return errorResponse(
         new ApiError(401, 'Invalid webhook signature', 'INVALID_SIGNATURE')
       )
     }
 
-    const event = JSON.parse(body)
+    const event = JSON.parse(rawBody)
+    const payment: PaymentEntity | undefined = event?.payload?.payment?.entity
 
-    // Handle different webhook events
-    switch (event.event) {
+    switch (event?.event) {
       case 'payment.captured':
-        await handlePaymentCaptured(event.payload)
+        if (payment) await markPaid(payment, payment.notes?.order_id)
         break
-
-      case 'payment.failed':
-        await handlePaymentFailed(event.payload)
-        break
-
       case 'order.paid':
-        await handleOrderPaid(event.payload)
+        if (payment) {
+          await markPaid(
+            payment,
+            event?.payload?.order?.entity?.notes?.order_id
+          )
+        }
         break
-
+      case 'payment.failed':
+        if (payment) await markFailed(payment)
+        break
       default:
-        console.log('Unhandled webhook event:', event.event)
+        // Acknowledge unhandled events so Razorpay doesn't retry them
+        break
     }
 
     return successResponse({ received: true })
@@ -80,90 +120,3 @@ export async function POST(request: NextRequest) {
     return handleApiError(error)
   }
 }
-
-/**
- * Handle payment captured event
- */
-async function handlePaymentCaptured(payload: any) {
-  const payment = payload.payment.entity
-  const order = payload.order.entity
-
-  // Find order by payment_id
-  const { data: dbOrder } = await supabaseAdmin
-    .from('orders')
-    .select('*')
-    .eq('payment_id', order.id)
-    .single()
-
-  if (dbOrder && payment.status === 'captured') {
-    await supabaseAdmin
-      .from('orders')
-      .update({
-        payment_status: 'paid',
-        status: 'confirmed',
-      })
-      .eq('id', dbOrder.id)
-
-    // Reserve inventory
-    const { data: orderItems } = await supabaseAdmin
-      .from('order_items')
-      .select('product_id, quantity')
-      .eq('order_id', dbOrder.id)
-
-    if (orderItems) {
-      for (const item of orderItems) {
-        if (item.product_id) {
-          const { data: inventory } = await supabaseAdmin
-            .from('inventory')
-            .select('id, reserved_quantity')
-            .eq('product_id', item.product_id)
-            .single()
-
-          if (inventory) {
-            await supabaseAdmin
-              .from('inventory')
-              .update({
-                reserved_quantity:
-                  (inventory.reserved_quantity || 0) + item.quantity,
-              })
-              .eq('id', inventory.id)
-          }
-        }
-      }
-    }
-  }
-}
-
-/**
- * Handle payment failed event
- */
-async function handlePaymentFailed(payload: any) {
-  const payment = payload.payment.entity
-  const order = payload.order.entity
-
-  const { data: dbOrder } = await supabaseAdmin
-    .from('orders')
-    .select('*')
-    .eq('payment_id', order.id)
-    .single()
-
-  if (dbOrder) {
-    await supabaseAdmin
-      .from('orders')
-      .update({
-        payment_status: 'failed',
-      })
-      .eq('id', dbOrder.id)
-  }
-}
-
-/**
- * Handle order paid event
- */
-async function handleOrderPaid(payload: any) {
-  // Similar to payment captured
-  await handlePaymentCaptured(payload)
-}
-
-// Disable body parsing for webhook to get raw body
-export const runtime = 'nodejs'

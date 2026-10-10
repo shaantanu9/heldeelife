@@ -9,6 +9,7 @@ import {
   isSupabaseConnectionError,
   safeSupabaseQuery,
 } from '@/lib/utils/supabase-error-handler'
+import { sanitizePostgrestSearch } from '@/lib/utils/postgrest-search'
 
 // Cache wrapper for Next.js fetch
 export const fetchWithCache = cache(
@@ -141,9 +142,12 @@ export const getProducts = cache(
       query = query.eq('is_featured', true)
     }
 
-    if (filters?.search) {
+    const search = filters?.search
+      ? sanitizePostgrestSearch(filters.search)
+      : ''
+    if (search) {
       query = query.or(
-        `name.ilike.%${filters.search}%,description.ilike.%${filters.search}%,short_description.ilike.%${filters.search}%`
+        `name.ilike.%${search}%,description.ilike.%${search}%,short_description.ilike.%${search}%`
       )
     }
 

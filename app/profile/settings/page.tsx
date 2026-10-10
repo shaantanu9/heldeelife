@@ -21,7 +21,7 @@ import Link from 'next/link'
 import { toast } from 'sonner'
 
 export default function SettingsPage() {
-  const { data: session, update } = useSession()
+  const { data: session, status, update } = useSession()
   const router = useRouter()
   const [loading, setLoading] = useState(false)
   const [formData, setFormData] = useState({
@@ -31,17 +31,21 @@ export default function SettingsPage() {
   })
 
   useEffect(() => {
-    if (!session) {
-      router.push('/auth/signin')
+    // Wait for the session to load; only redirect when definitely signed out
+    if (status === 'unauthenticated') {
+      router.push(
+        `/auth/signin?callbackUrl=${encodeURIComponent(window.location.pathname)}`
+      )
       return
     }
+    if (!session) return
 
     setFormData({
       name: session.user?.name || '',
       email: session.user?.email || '',
       phone: session.user?.phoneNumber || '',
     })
-  }, [session, router])
+  }, [session, status, router])
 
   const handleSubmit = useCallback(
     async (e: React.FormEvent) => {
@@ -115,7 +119,10 @@ export default function SettingsPage() {
             <CardContent>
               <form onSubmit={handleSubmit} className="space-y-6">
                 <div>
-                  <Label htmlFor="name" className="flex items-center gap-2 mb-2">
+                  <Label
+                    htmlFor="name"
+                    className="flex items-center gap-2 mb-2"
+                  >
                     <User className="h-4 w-4" />
                     Full Name
                   </Label>
@@ -133,7 +140,10 @@ export default function SettingsPage() {
                 </div>
 
                 <div>
-                  <Label htmlFor="email" className="flex items-center gap-2 mb-2">
+                  <Label
+                    htmlFor="email"
+                    className="flex items-center gap-2 mb-2"
+                  >
                     <Mail className="h-4 w-4" />
                     Email Address
                   </Label>
@@ -155,7 +165,10 @@ export default function SettingsPage() {
                 </div>
 
                 <div>
-                  <Label htmlFor="phone" className="flex items-center gap-2 mb-2">
+                  <Label
+                    htmlFor="phone"
+                    className="flex items-center gap-2 mb-2"
+                  >
                     <Phone className="h-4 w-4" />
                     Phone Number
                   </Label>
@@ -177,8 +190,8 @@ export default function SettingsPage() {
                 <div className="flex items-center gap-2 p-4 bg-blue-50 rounded-lg border border-blue-200">
                   <Shield className="h-5 w-5 text-blue-600 flex-shrink-0" />
                   <p className="text-sm text-blue-900">
-                    Your information is secure and encrypted. We never share your
-                    data with third parties.
+                    Your information is secure and encrypted. We never share
+                    your data with third parties.
                   </p>
                 </div>
 
@@ -226,9 +239,7 @@ export default function SettingsPage() {
                 <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
                   <div>
                     <p className="font-semibold text-gray-900">Password</p>
-                    <p className="text-sm text-gray-600">
-                      Last changed: Never
-                    </p>
+                    <p className="text-sm text-gray-600">Last changed: Never</p>
                   </div>
                   <Button
                     variant="outline"
@@ -257,7 +268,9 @@ export default function SettingsPage() {
           {/* Preferences */}
           <Card className="border border-gray-200 shadow-xl bg-white">
             <CardHeader>
-              <CardTitle className="text-xl text-gray-900">Preferences</CardTitle>
+              <CardTitle className="text-xl text-gray-900">
+                Preferences
+              </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
@@ -273,12 +286,3 @@ export default function SettingsPage() {
     </div>
   )
 }
-
-
-
-
-
-
-
-
-

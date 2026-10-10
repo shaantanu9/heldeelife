@@ -85,12 +85,3 @@ export function PaymentInfo({
     </Card>
   )
 }
-
-
-
-
-
-
-
-
-

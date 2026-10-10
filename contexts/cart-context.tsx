@@ -18,11 +18,36 @@ export interface CartItem {
   image: string
   quantity: number
   sku?: string // Product SKU from database
+  /** Optional stock cap (e.g. inventory available_quantity). */
+  maxQuantity?: number
+}
+
+/**
+ * Clamp a quantity to an item's stock cap. Only a positive, finite
+ * `maxQuantity` is treated as a cap; missing/zero/invalid values mean the
+ * stock level is unknown, so the quantity is left as-is (server validates).
+ */
+export function clampCartQuantity(
+  quantity: number,
+  maxQuantity?: number
+): number {
+  if (
+    typeof maxQuantity === 'number' &&
+    Number.isFinite(maxQuantity) &&
+    maxQuantity > 0
+  ) {
+    return Math.min(quantity, Math.floor(maxQuantity))
+  }
+  return quantity
 }
 
 interface CartContextType {
   cart: CartItem[]
-  addToCart: (item: Omit<CartItem, 'quantity'>) => void
+  /**
+   * Add `quantity` (default 1) of an item. If it is already in the cart the
+   * quantities are summed. The result is clamped to `maxQuantity` when known.
+   */
+  addToCart: (item: Omit<CartItem, 'quantity'>, quantity?: number) => void
   removeFromCart: (id: string) => void
   updateQuantity: (id: string, quantity: number) => void
   clearCart: () => void
@@ -62,19 +87,15 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     }
   }, [])
 
-  // Save cart to localStorage whenever it changes (only after hydration)
-  // Use debouncing to avoid excessive writes
+  // Persist immediately on every change (only after hydration). Debouncing
+  // here lost items when shoppers added to cart and navigated/refreshed
+  // within the debounce window; a localStorage write of a cart is cheap.
   useEffect(() => {
-    if (isHydrated) {
-      const timeoutId = setTimeout(() => {
-        try {
-          localStorage.setItem('heldeelife-cart', JSON.stringify(cart))
-        } catch (error) {
-          console.error('Error saving cart:', error)
-        }
-      }, 300) // Debounce by 300ms
-
-      return () => clearTimeout(timeoutId)
+    if (!isHydrated) return
+    try {
+      localStorage.setItem('heldeelife-cart', JSON.stringify(cart))
+    } catch (error) {
+      console.error('Error saving cart:', error)
     }
   }, [cart, isHydrated])
 
@@ -83,47 +104,70 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     if (!isHydrated || cart.length === 0) return
 
     // Track abandonment after 30 minutes of inactivity
-    const abandonmentTimer = setTimeout(() => {
-      if (cart.length > 0) {
-        const cartValue = cart.reduce(
-          (sum, item) => sum + item.price * item.quantity,
-          0
-        )
-        AnalyticsTracker.trackCartAbandonment(cartValue, cart.length)
-      }
-    }, 30 * 60 * 1000) // 30 minutes
+    const abandonmentTimer = setTimeout(
+      () => {
+        if (cart.length > 0) {
+          const cartValue = cart.reduce(
+            (sum, item) => sum + item.price * item.quantity,
+            0
+          )
+          AnalyticsTracker.trackCartAbandonment(cartValue, cart.length)
+        }
+      },
+      30 * 60 * 1000
+    ) // 30 minutes
 
     return () => clearTimeout(abandonmentTimer)
   }, [cart, isHydrated])
 
   // Memoized cart functions to prevent unnecessary re-renders
-  const addToCart = useCallback((item: Omit<CartItem, 'quantity'>) => {
-    setCart((prevCart) => {
-      const existingItem = prevCart.find((cartItem) => cartItem.id === item.id)
-      const newCart = existingItem
-        ? prevCart.map((cartItem) =>
-            cartItem.id === item.id
-              ? { ...cartItem, quantity: cartItem.quantity + 1 }
-              : cartItem
-          )
-        : [...prevCart, { ...item, quantity: 1 }]
+  const addToCart = useCallback(
+    (item: Omit<CartItem, 'quantity'>, quantity: number = 1) => {
+      const amount =
+        Number.isFinite(quantity) && quantity >= 1 ? Math.floor(quantity) : 1
 
-      // Track analytics
-      if (typeof window !== 'undefined') {
-        const addedItem = newCart.find((cartItem) => cartItem.id === item.id)
-        if (addedItem) {
+      setCart((prevCart) => {
+        const existingItem = prevCart.find(
+          (cartItem) => cartItem.id === item.id
+        )
+        const maxQuantity = item.maxQuantity ?? existingItem?.maxQuantity
+        const nextQuantity = clampCartQuantity(
+          (existingItem?.quantity ?? 0) + amount,
+          maxQuantity
+        )
+
+        if (existingItem && nextQuantity === existingItem.quantity) {
+          // Already at the stock cap: nothing changes
+          return prevCart
+        }
+
+        const newCart = existingItem
+          ? prevCart.map((cartItem) =>
+              cartItem.id === item.id
+                ? {
+                    ...cartItem,
+                    maxQuantity,
+                    quantity: nextQuantity,
+                  }
+                : cartItem
+            )
+          : [...prevCart, { ...item, maxQuantity, quantity: nextQuantity }]
+
+        // Track analytics
+        if (typeof window !== 'undefined') {
           AnalyticsTracker.trackAddToCart(
             item.product_id,
             item.name,
             item.price,
-            addedItem.quantity
+            nextQuantity
           )
         }
-      }
 
-      return newCart
-    })
-  }, [])
+        return newCart
+      })
+    },
+    []
+  )
 
   const removeFromCart = useCallback((id: string) => {
     setCart((prevCart) => {
@@ -145,7 +189,17 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       return
     }
     setCart((prevCart) =>
-      prevCart.map((item) => (item.id === id ? { ...item, quantity } : item))
+      prevCart.map((item) =>
+        item.id === id
+          ? {
+              ...item,
+              quantity: clampCartQuantity(
+                Math.max(1, Math.floor(quantity)),
+                item.maxQuantity
+              ),
+            }
+          : item
+      )
     )
   }, [])
 

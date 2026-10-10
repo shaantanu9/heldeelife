@@ -1,6 +1,7 @@
 'use client'
 
-import { useState, useEffect, useMemo, useCallback } from 'react'
+import { useState, useEffect, useMemo, Suspense } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { Card, CardContent, CardFooter } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -75,7 +76,22 @@ interface Product {
 }
 
 export default function SearchPage() {
-  const [searchQuery, setSearchQuery] = useState('')
+  return (
+    <Suspense
+      fallback={
+        <div className="container px-4 py-8">
+          <ProductGridSkeleton count={8} />
+        </div>
+      }
+    >
+      <SearchPageContent />
+    </Suspense>
+  )
+}
+
+function SearchPageContent() {
+  const searchParams = useSearchParams()
+  const searchQuery = (searchParams.get('q') || '').trim()
   const [products, setProducts] = useState<Product[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [sortBy, setSortBy] = useState<SortOption>('relevance')
@@ -87,43 +103,38 @@ export default function SearchPage() {
   const { addToCart } = useCart()
   const { toggleWishlist, isInWishlist } = useWishlist()
 
-  // Get search query from URL
+  // Single fetch per query change (driven by the URL ?q= param)
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search)
-    const q = params.get('q')
-    if (q) {
-      setSearchQuery(q)
-      handleSearch(q)
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
-
-  const handleSearch = useCallback(async (query: string) => {
-    if (!query.trim()) {
+    if (!searchQuery) {
       setProducts([])
+      setIsLoading(false)
       return
     }
 
+    const controller = new AbortController()
     setIsLoading(true)
-    try {
-      const response = await fetch(
-        `/api/products?search=${encodeURIComponent(query)}`
-      )
-      const data = await response.json()
-      setProducts((data.products || []).map((p: any) => ({ ...p, product_id: p.product_id || p.id })))
-    } catch (error) {
-      console.error('Search error:', error)
-      setProducts([])
-    } finally {
-      setIsLoading(false)
-    }
-  }, [])
+    fetch(`/api/products?search=${encodeURIComponent(searchQuery)}`, {
+      signal: controller.signal,
+    })
+      .then((response) => response.json())
+      .then((data) => {
+        setProducts(
+          (data.products || []).map((p: any) => ({
+            ...p,
+            product_id: p.product_id || p.id,
+          }))
+        )
+        setIsLoading(false)
+      })
+      .catch((error) => {
+        if (controller.signal.aborted) return
+        console.error('Search error:', error)
+        setProducts([])
+        setIsLoading(false)
+      })
 
-  useEffect(() => {
-    if (searchQuery) {
-      handleSearch(searchQuery)
-    }
-  }, [searchQuery, handleSearch])
+    return () => controller.abort()
+  }, [searchQuery])
 
   // Filter and sort products
   const filteredAndSortedProducts = useMemo(() => {
@@ -179,6 +190,7 @@ export default function SearchPage() {
       name: product.name,
       price: product.price,
       image: product.image || '📦',
+      maxQuantity: product.stockQuantity,
       sku: product.sku,
     })
     toast.success(`${product.name} added to cart`)
@@ -259,7 +271,9 @@ export default function SearchPage() {
                         </Label>
                         <Slider
                           value={priceRange}
-                          onValueChange={(value) => setPriceRange(value as [number, number])}
+                          onValueChange={(value) =>
+                            setPriceRange(value as [number, number])
+                          }
                           max={maxPrice}
                           min={0}
                           step={100}
@@ -406,7 +420,10 @@ export default function SearchPage() {
                             )}
                           />
                         </Button>
-                        <ComparisonButton product={{...product, product_id: product.id}} variant="icon" />
+                        <ComparisonButton
+                          product={{ ...product, product_id: product.id }}
+                          variant="icon"
+                        />
                       </div>
 
                       {/* Quick View Button */}

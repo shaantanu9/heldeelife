@@ -11,6 +11,8 @@ import {
 } from '@/components/ui/carousel'
 import { useCart } from '@/contexts/cart-context'
 import Link from 'next/link'
+import Image from 'next/image'
+import { isImageUrl, needsUnoptimized } from '@/lib/utils/image-src'
 
 interface Product {
   id: string
@@ -19,6 +21,7 @@ interface Product {
   price: number
   image: string
   inStock: boolean
+  stockQuantity?: number
 }
 
 interface ProductsClientProps {
@@ -35,6 +38,7 @@ export function ProductsClient({ products }: ProductsClientProps) {
       name: product.name,
       price: product.price,
       image: product.image,
+      maxQuantity: product.stockQuantity,
     })
   }
 
@@ -65,10 +69,21 @@ export function ProductsClient({ products }: ProductsClientProps) {
                 <Card className="border border-gray-200 shadow-md hover:shadow-xl transition-all duration-300 bg-white group">
                   <Link href={`/products/${product.slug || product.id}`}>
                     <CardContent className="p-8">
-                      <div className="aspect-square bg-orange-50 rounded-lg flex items-center justify-center mb-6 group-hover:bg-orange-100 transition-colors">
-                        <span className="text-6xl opacity-70">
-                          {product.image || '📦'}
-                        </span>
+                      <div className="relative aspect-square overflow-hidden bg-orange-50 rounded-lg flex items-center justify-center mb-6 group-hover:bg-orange-100 transition-colors">
+                        {isImageUrl(product.image) ? (
+                          <Image
+                            src={product.image}
+                            alt={product.name}
+                            fill
+                            sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
+                            className="object-cover"
+                            unoptimized={needsUnoptimized(product.image)}
+                          />
+                        ) : (
+                          <span className="text-6xl opacity-70">
+                            {product.image || '📦'}
+                          </span>
+                        )}
                       </div>
                       <h3 className="font-semibold text-lg mb-3 text-gray-900 leading-snug">
                         {product.name}

@@ -48,6 +48,7 @@ interface Product {
   sales_count?: number
   views_count?: number
   sku?: string
+  slug?: string
 }
 
 interface Review {
@@ -83,11 +84,7 @@ export function ProductEnhanced({ product }: ProductEnhancedProps) {
   // Track product view on mount
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      AnalyticsTracker.trackProductView(
-        product.id,
-        product.name,
-        product.price
-      )
+      AnalyticsTracker.trackProductView(product.id, product.name, product.price)
       AnalyticsTracker.trackConversionFunnel('view', {
         product_id: product.id,
         product_name: product.name,
@@ -117,20 +114,19 @@ export function ProductEnhanced({ product }: ProductEnhancedProps) {
     setIsAddingToCart(true)
 
     try {
-      // Simulate a small delay for better UX (can be removed if cart is instant)
-      await new Promise((resolve) => setTimeout(resolve, 300))
-
-      // Add items to cart
-      for (let i = 0; i < quantity; i++) {
-        addToCart({
+      // Add items to cart (clamped to available stock by the cart)
+      addToCart(
+        {
           id: product.id,
           product_id: product.id,
           name: product.name,
           price: Number(product.price),
           image: product.image || '📦',
           sku: product.sku,
-        })
-      }
+          maxQuantity: product.stockQuantity,
+        },
+        quantity
+      )
 
       // Track conversion funnel
       if (typeof window !== 'undefined') {
@@ -395,7 +391,7 @@ export function ProductEnhanced({ product }: ProductEnhancedProps) {
               id: product.id,
               product_id: product.id,
               name: product.name,
-              slug: '',
+              slug: product.slug || product.id,
               price: product.price,
               compare_at_price: product.compare_at_price,
               image: product.image,
@@ -406,7 +402,7 @@ export function ProductEnhanced({ product }: ProductEnhancedProps) {
               rating: product.rating,
               reviews_count: product.reviews_count,
               sales_count: product.sales_count,
-              sku: '',
+              sku: product.sku || '',
             }}
             variant="default"
           />

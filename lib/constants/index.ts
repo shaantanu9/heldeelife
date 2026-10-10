@@ -243,7 +243,11 @@ export const SUCCESS_MESSAGES = {
 // Business Configuration
 export const BUSINESS_CONFIG = {
   taxRate: 0.18,
+  // Indian retail prices (MRP) are GST-inclusive: tax is reported as the
+  // component already contained in the price, never added on top.
+  pricesIncludeTax: true,
   freeShippingThreshold: 500,
+  shippingFee: 50,
   currency: 'INR',
   currencySymbol: '₹',
 } as const

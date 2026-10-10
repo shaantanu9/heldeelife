@@ -1,77 +1,46 @@
 /**
  * POST /api/payments/verify
- * Verify Razorpay payment signature
+ * Verify the Razorpay checkout signature and mark the order paid.
+ *
+ * Body: { order_id, razorpay_order_id, razorpay_payment_id,
+ *         razorpay_signature, access_token? }
  */
 
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth-options'
 import { supabaseAdmin } from '@/lib/supabase/server'
-import crypto from 'crypto'
 import {
   errorResponse,
   successResponse,
   handleApiError,
   ApiError,
 } from '@/lib/utils/api-error'
-
-const RAZORPAY_KEY_SECRET = process.env.RAZORPAY_KEY_SECRET
-
-interface VerifyPaymentRequest {
-  razorpay_order_id: string
-  razorpay_payment_id: string
-  razorpay_signature: string
-  order_id: string // Our internal order ID
-}
-
-/**
- * Verify Razorpay payment signature
- */
-function verifyPaymentSignature(
-  orderId: string,
-  paymentId: string,
-  signature: string
-): boolean {
-  if (!RAZORPAY_KEY_SECRET) {
-    return false
-  }
-
-  const payload = `${orderId}|${paymentId}`
-  const generatedSignature = crypto
-    .createHmac('sha256', RAZORPAY_KEY_SECRET)
-    .update(payload)
-    .digest('hex')
-
-  return generatedSignature === signature
-}
+import { canAccessOrder } from '@/lib/commerce/order-access'
+import { verifyPaymentSignature } from '@/lib/commerce/razorpay'
 
 export async function POST(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions)
-
-    if (!session?.user) {
-      return errorResponse(new ApiError(401, 'Unauthorized', 'UNAUTHORIZED'))
-    }
-
-    if (!RAZORPAY_KEY_SECRET) {
+    if (!process.env.RAZORPAY_KEY_SECRET) {
       return errorResponse(
         new ApiError(
-          500,
+          503,
           'Payment gateway not configured',
           'PAYMENT_CONFIG_ERROR'
         )
       )
     }
 
-    const body: VerifyPaymentRequest = await request.json()
+    const session = await getServerSession(authOptions)
+    const body = await request.json().catch(() => ({}))
     const {
       razorpay_order_id,
       razorpay_payment_id,
       razorpay_signature,
       order_id,
-    } = body
+      access_token,
+    } = body ?? {}
 
-    // Validate required fields
     if (
       !razorpay_order_id ||
       !razorpay_payment_id ||
@@ -87,69 +56,71 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Verify signature
-    const isValid = verifyPaymentSignature(
-      razorpay_order_id,
-      razorpay_payment_id,
-      razorpay_signature
-    )
-
-    if (!isValid) {
+    if (
+      !verifyPaymentSignature(
+        razorpay_order_id,
+        razorpay_payment_id,
+        razorpay_signature
+      )
+    ) {
       return errorResponse(
         new ApiError(400, 'Invalid payment signature', 'INVALID_SIGNATURE')
       )
     }
 
-    // Verify order exists and belongs to user
-    const { data: order, error: orderError } = await supabaseAdmin
+    const { data: order } = await supabaseAdmin
       .from('orders')
-      .select('*')
+      .select(
+        'id, user_id, status, payment_status, payment_id, payment_transaction_id'
+      )
       .eq('id', order_id)
-      .eq('user_id', session.user.id)
-      .single()
+      .maybeSingle()
 
-    if (orderError || !order) {
+    if (!order || !canAccessOrder(order, session, access_token)) {
       return errorResponse(
         new ApiError(404, 'Order not found', 'ORDER_NOT_FOUND')
       )
     }
 
-    // Update order payment status
+    // The signature only proves *a* payment happened; it must be for the
+    // Razorpay order we created for THIS order (otherwise a cheap order's
+    // payment could mark an expensive one paid).
+    if (order.payment_id !== razorpay_order_id) {
+      return errorResponse(
+        new ApiError(
+          400,
+          'Payment does not match this order',
+          'PAYMENT_MISMATCH'
+        )
+      )
+    }
+
+    // Idempotent: the webhook may have confirmed it already
+    if (order.payment_status === 'paid') {
+      return successResponse({ order_id: order.id, payment_status: 'paid' })
+    }
+
     const { error: updateError } = await supabaseAdmin
       .from('orders')
       .update({
         payment_status: 'paid',
-        payment_id: razorpay_payment_id,
-        status: 'confirmed',
+        payment_transaction_id: razorpay_payment_id,
+        // A cancelled (e.g. expired) order that got paid stays cancelled so
+        // support can refund it; normal orders are confirmed.
+        ...(order.status === 'pending' && { status: 'confirmed' }),
       })
-      .eq('id', order_id)
+      .eq('id', order.id)
+      .neq('payment_status', 'paid')
 
     if (updateError) {
-      console.error('Error updating order:', updateError)
+      console.error('Error updating order after payment:', updateError)
       return errorResponse(
-        new ApiError(500, 'Failed to update order', 'UPDATE_FAILED')
+        new ApiError(500, 'Failed to update order', 'ORDER_UPDATE_FAILED')
       )
     }
 
-    // Inventory is already reserved at order creation time (in POST /api/orders)
-    // No need to reserve again here
-
-    return successResponse({
-      verified: true,
-      order_id: order_id,
-      payment_id: razorpay_payment_id,
-      message: 'Payment verified successfully',
-    })
+    return successResponse({ order_id: order.id, payment_status: 'paid' })
   } catch (error) {
     return handleApiError(error)
   }
 }
-
-
-
-
-
-
-
-
-

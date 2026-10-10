@@ -47,7 +47,7 @@ interface Order {
 }
 
 export default function OrdersPage() {
-  const { data: session } = useSession()
+  const { data: session, status } = useSession()
   const router = useRouter()
   const [orders, setOrders] = useState<Order[]>([])
   const [loading, setLoading] = useState(true)
@@ -57,16 +57,20 @@ export default function OrdersPage() {
   const [sortBy, setSortBy] = useState<string>('newest')
 
   useEffect(() => {
-    if (!session) {
-      router.push('/auth/signin')
+    // Wait for the session to load; only redirect when definitely signed out
+    if (status === 'unauthenticated') {
+      router.push(
+        `/auth/signin?callbackUrl=${encodeURIComponent(window.location.pathname)}`
+      )
       return
     }
+    if (!session) return
     fetchOrders()
-  }, [session, router])
+  }, [session, status, router])
 
   const fetchOrders = async () => {
     try {
-      const response = await fetch('/api/orders')
+      const response = await fetch('/api/orders?scope=mine')
       if (!response.ok) throw new Error('Failed to fetch orders')
       const data = await response.json()
       setOrders(data.orders || [])
@@ -99,16 +103,13 @@ export default function OrdersPage() {
   // Calculate order statistics (Social Proof)
   const totalSpent = orders.reduce(
     (sum, order) =>
-      sum +
-      (order.payment_status === 'paid' ? Number(order.total_amount) : 0),
+      sum + (order.payment_status === 'paid' ? Number(order.total_amount) : 0),
     0
   )
   const pendingCount = orders.filter(
     (o) => o.status === 'pending' || o.status === 'processing'
   ).length
-  const deliveredCount = orders.filter(
-    (o) => o.status === 'delivered'
-  ).length
+  const deliveredCount = orders.filter((o) => o.status === 'delivered').length
 
   // Filter and sort orders
   const filteredAndSortedOrders = useMemo(() => {
@@ -144,13 +145,11 @@ export default function OrdersPage() {
       switch (sortBy) {
         case 'newest':
           return (
-            new Date(b.created_at).getTime() -
-            new Date(a.created_at).getTime()
+            new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
           )
         case 'oldest':
           return (
-            new Date(a.created_at).getTime() -
-            new Date(b.created_at).getTime()
+            new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
           )
         case 'amount-high':
           return Number(b.total_amount) - Number(a.total_amount)
@@ -262,8 +261,12 @@ export default function OrdersPage() {
                   <SelectContent>
                     <SelectItem value="newest">Newest First</SelectItem>
                     <SelectItem value="oldest">Oldest First</SelectItem>
-                    <SelectItem value="amount-high">Amount: High to Low</SelectItem>
-                    <SelectItem value="amount-low">Amount: Low to High</SelectItem>
+                    <SelectItem value="amount-high">
+                      Amount: High to Low
+                    </SelectItem>
+                    <SelectItem value="amount-low">
+                      Amount: Low to High
+                    </SelectItem>
                   </SelectContent>
                 </Select>
 
@@ -398,113 +401,115 @@ export default function OrdersPage() {
               </Card>
             ) : (
               filteredAndSortedOrders.map((order) => (
-              <Card
-                key={order.id}
-                className="border border-gray-200 shadow-md hover:shadow-xl transition-all duration-300 bg-white"
-              >
-                <CardHeader>
-                  <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-3 mb-2">
-                        <CardTitle className="text-gray-900">
-                          Order #{order.order_number}
-                        </CardTitle>
-                        <Badge
-                          className={`px-3 py-1 rounded-full text-sm font-semibold ${getStatusColor(
-                            order.status
-                          )}`}
-                        >
-                          {order.status.charAt(0).toUpperCase() +
-                            order.status.slice(1)}
-                        </Badge>
-                      </div>
-                      <p className="text-sm text-gray-600">
-                        {new Date(order.created_at).toLocaleDateString(
-                          'en-IN',
-                          {
-                            year: 'numeric',
-                            month: 'long',
-                            day: 'numeric',
-                            hour: '2-digit',
-                            minute: '2-digit',
-                          }
-                        )}
-                      </p>
-                    </div>
-                    <div className="text-left md:text-right">
-                      <p className="text-sm text-gray-600 mb-1">Total Amount</p>
-                      <p className="text-2xl font-bold text-orange-600">
-                        Rs. {Number(order.total_amount).toFixed(2)}
-                      </p>
-                      {order.payment_status === 'paid' && (
-                        <Badge className="mt-2 bg-green-100 text-green-800">
-                          Paid
-                        </Badge>
-                      )}
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-3 mb-4">
-                    <p className="text-sm font-semibold text-gray-900 mb-2">
-                      Items ({order.order_items?.length || 0})
-                    </p>
-                    {order.order_items?.map((item) => (
-                      <div
-                        key={item.id}
-                        className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
-                      >
-                        <div className="flex-1">
-                          <p className="font-semibold text-gray-900">
-                            {item.product_name}
-                          </p>
-                          <p className="text-sm text-gray-600">
-                            Quantity: {item.quantity} × Rs.{' '}
-                            {Number(item.unit_price).toFixed(2)}
-                          </p>
+                <Card
+                  key={order.id}
+                  className="border border-gray-200 shadow-md hover:shadow-xl transition-all duration-300 bg-white"
+                >
+                  <CardHeader>
+                    <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-3 mb-2">
+                          <CardTitle className="text-gray-900">
+                            Order #{order.order_number}
+                          </CardTitle>
+                          <Badge
+                            className={`px-3 py-1 rounded-full text-sm font-semibold ${getStatusColor(
+                              order.status
+                            )}`}
+                          >
+                            {order.status.charAt(0).toUpperCase() +
+                              order.status.slice(1)}
+                          </Badge>
                         </div>
-                        <p className="font-semibold text-gray-900">
-                          Rs. {Number(item.total_price).toFixed(2)}
+                        <p className="text-sm text-gray-600">
+                          {new Date(order.created_at).toLocaleDateString(
+                            'en-IN',
+                            {
+                              year: 'numeric',
+                              month: 'long',
+                              day: 'numeric',
+                              hour: '2-digit',
+                              minute: '2-digit',
+                            }
+                          )}
                         </p>
                       </div>
-                    ))}
-                  </div>
-                  {order.shipping_address && (
-                    <div className="pt-4 border-t border-gray-200 mb-4">
-                      <p className="text-sm font-semibold text-gray-900 mb-2 flex items-center gap-2">
-                        <MapPin className="h-4 w-4" />
-                        Shipping Address:
-                      </p>
-                      <p className="text-sm text-gray-600">
-                        {order.shipping_address.name}
-                        <br />
-                        {order.shipping_address.address}
-                        {order.shipping_address.addressLine2 && (
-                          <>
-                            <br />
-                            {order.shipping_address.addressLine2}
-                          </>
+                      <div className="text-left md:text-right">
+                        <p className="text-sm text-gray-600 mb-1">
+                          Total Amount
+                        </p>
+                        <p className="text-2xl font-bold text-orange-600">
+                          Rs. {Number(order.total_amount).toFixed(2)}
+                        </p>
+                        {order.payment_status === 'paid' && (
+                          <Badge className="mt-2 bg-green-100 text-green-800">
+                            Paid
+                          </Badge>
                         )}
-                        <br />
-                        {order.shipping_address.city},{' '}
-                        {order.shipping_address.state}{' '}
-                        {order.shipping_address.pincode}
-                      </p>
+                      </div>
                     </div>
-                  )}
-                  <div className="pt-4 border-t border-gray-200">
-                    <Button
-                      asChild
-                      className="w-full rounded-lg bg-orange-600 hover:bg-orange-700 text-white shadow-md hover:shadow-lg transition-all"
-                    >
-                      <Link href={`/profile/orders/${order.id}`}>
-                        <Package className="h-4 w-4 mr-2" />
-                        Track Order
-                      </Link>
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-3 mb-4">
+                      <p className="text-sm font-semibold text-gray-900 mb-2">
+                        Items ({order.order_items?.length || 0})
+                      </p>
+                      {order.order_items?.map((item) => (
+                        <div
+                          key={item.id}
+                          className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
+                        >
+                          <div className="flex-1">
+                            <p className="font-semibold text-gray-900">
+                              {item.product_name}
+                            </p>
+                            <p className="text-sm text-gray-600">
+                              Quantity: {item.quantity} × Rs.{' '}
+                              {Number(item.unit_price).toFixed(2)}
+                            </p>
+                          </div>
+                          <p className="font-semibold text-gray-900">
+                            Rs. {Number(item.total_price).toFixed(2)}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                    {order.shipping_address && (
+                      <div className="pt-4 border-t border-gray-200 mb-4">
+                        <p className="text-sm font-semibold text-gray-900 mb-2 flex items-center gap-2">
+                          <MapPin className="h-4 w-4" />
+                          Shipping Address:
+                        </p>
+                        <p className="text-sm text-gray-600">
+                          {order.shipping_address.name}
+                          <br />
+                          {order.shipping_address.address}
+                          {order.shipping_address.addressLine2 && (
+                            <>
+                              <br />
+                              {order.shipping_address.addressLine2}
+                            </>
+                          )}
+                          <br />
+                          {order.shipping_address.city},{' '}
+                          {order.shipping_address.state}{' '}
+                          {order.shipping_address.pincode}
+                        </p>
+                      </div>
+                    )}
+                    <div className="pt-4 border-t border-gray-200">
+                      <Button
+                        asChild
+                        className="w-full rounded-lg bg-orange-600 hover:bg-orange-700 text-white shadow-md hover:shadow-lg transition-all"
+                      >
+                        <Link href={`/profile/orders/${order.id}`}>
+                          <Package className="h-4 w-4 mr-2" />
+                          Track Order
+                        </Link>
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
               ))
             )}
           </div>

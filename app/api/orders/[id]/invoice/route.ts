@@ -2,6 +2,28 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth-options'
 import { supabaseAdmin } from '@/lib/supabase/server'
+import { canAccessOrder } from '@/lib/commerce/order-access'
+
+const HTML_ESCAPES: Record<string, string> = {
+  '&': '&amp;',
+  '<': '&lt;',
+  '>': '&gt;',
+  '"': '&quot;',
+  "'": '&#39;',
+}
+
+function escapeDeep<T>(value: T): T {
+  if (typeof value === 'string') {
+    return value.replace(/[&<>"']/g, (c) => HTML_ESCAPES[c]) as T
+  }
+  if (Array.isArray(value)) return value.map(escapeDeep) as T
+  if (value && typeof value === 'object') {
+    return Object.fromEntries(
+      Object.entries(value).map(([k, v]) => [k, escapeDeep(v)])
+    ) as T
+  }
+  return value
+}
 
 // GET /api/orders/[id]/invoice - Generate and download invoice
 export async function GET(
@@ -10,16 +32,10 @@ export async function GET(
 ) {
   try {
     const session = await getServerSession(authOptions)
+    const { id: orderId } = await params
+    const token = new URL(request.url).searchParams.get('token')
 
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-
-    const { id } = await params
-    const orderId = id
-
-    // Fetch order with items
-    let query = supabaseAdmin
+    const { data: order, error } = await supabaseAdmin
       .from('orders')
       .select(
         `
@@ -38,26 +54,31 @@ export async function GET(
       `
       )
       .eq('id', orderId)
+      .maybeSingle()
 
-    // Users can only see their own orders
-    if (session.user.role !== 'admin') {
-      query = query.eq('user_id', session.user.id)
-    }
-
-    const { data: order, error } = await query.single()
-
-    if (error || !order) {
-      return NextResponse.json({ error: 'Order not found' }, { status: 404 })
+    // Admin, owner, or guest holding the order's access token
+    if (error || !order || !canAccessOrder(order, session, token)) {
+      return NextResponse.json(
+        { error: session?.user || token ? 'Order not found' : 'Unauthorized' },
+        { status: session?.user || token ? 404 : 401 }
+      )
     }
 
     // Generate invoice HTML
-    const invoiceHtml = generateInvoiceHTML(order)
+    // Every string (addresses, names) is customer-controlled: escape it all
+    // before templating, or the invoice becomes a stored-XSS vector on our
+    // origin (admins open these too).
+    const invoiceHtml = generateInvoiceHTML(escapeDeep(order))
 
     // Return HTML invoice (can be converted to PDF on client side or server side)
     // For now, return HTML that can be printed
     return new NextResponse(invoiceHtml, {
       headers: {
-        'Content-Type': 'text/html',
+        'Content-Type': 'text/html; charset=utf-8',
+        'Cache-Control': 'no-store',
+        'X-Content-Type-Options': 'nosniff',
+        'Content-Security-Policy':
+          "default-src 'none'; style-src 'unsafe-inline'; img-src https: data:",
         'Content-Disposition': `inline; filename="invoice-${order.order_number || orderId}.html"`,
       },
     })
@@ -345,12 +366,3 @@ function generateInvoiceHTML(order: any) {
 </html>
   `
 }
-
-
-
-
-
-
-
-
-

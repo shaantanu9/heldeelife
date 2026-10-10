@@ -61,8 +61,10 @@ dist/
 download/
 eggs/
 .eggs/
-lib/
-lib64/
+# NOTE: no bare `lib/` rule — it matched this app's source folder (lib/)
+# and silently dropped every new file in it from git.
+/venv/lib/
+/venv/lib64/
 parts/
 sdist/
 var/
@@ -99,3 +101,8 @@ venv.bak/
 *.scrapy.log
 scrapy.log
 .scrapy-*
+
+# Never commit real environment files (only the *.example templates)
+.env*
+!.env.example
+!**/.env.example

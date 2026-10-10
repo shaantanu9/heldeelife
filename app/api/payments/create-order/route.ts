@@ -1,9 +1,12 @@
 /**
  * POST /api/payments/create-order
- * Create a payment order with Razorpay
+ * Create (or reuse) the Razorpay order for one of our orders.
+ *
+ * Body: { order_id, access_token? } — access_token lets guests pay.
+ * The amount always comes from the stored order, never from the client.
  */
 
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth-options'
 import { supabaseAdmin } from '@/lib/supabase/server'
@@ -13,44 +16,30 @@ import {
   handleApiError,
   ApiError,
 } from '@/lib/utils/api-error'
-
-// Razorpay SDK (install: npm install razorpay)
-// For now, we'll use fetch API to call Razorpay API directly
-const RAZORPAY_KEY_ID = process.env.RAZORPAY_KEY_ID
-const RAZORPAY_KEY_SECRET = process.env.RAZORPAY_KEY_SECRET
-const RAZORPAY_BASE_URL = 'https://api.razorpay.com/v1'
-
-interface CreatePaymentOrderRequest {
-  order_id: string // Our internal order ID
-  amount: number // Amount in paise (smallest currency unit)
-  currency?: string
-  receipt?: string
-  notes?: Record<string, string>
-}
+import { canAccessOrder } from '@/lib/commerce/order-access'
+import {
+  createRazorpayOrder,
+  isPaymentGatewayConfigured,
+} from '@/lib/commerce/razorpay'
 
 export async function POST(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions)
-
-    if (!session?.user) {
-      return errorResponse(new ApiError(401, 'Unauthorized', 'UNAUTHORIZED'))
-    }
-
-    if (!RAZORPAY_KEY_ID || !RAZORPAY_KEY_SECRET) {
+    if (!isPaymentGatewayConfigured()) {
       return errorResponse(
         new ApiError(
-          500,
-          'Payment gateway not configured',
+          503,
+          'Online payment is currently unavailable',
           'PAYMENT_CONFIG_ERROR'
         )
       )
     }
 
-    const body: CreatePaymentOrderRequest = await request.json()
-    const { order_id, currency = 'INR', receipt, notes } = body
+    const session = await getServerSession(authOptions)
+    const body = await request.json().catch(() => ({}))
+    const orderId: string | undefined = body?.order_id
+    const accessToken: string | undefined = body?.access_token
 
-    // Validate required fields
-    if (!order_id) {
+    if (!orderId) {
       return errorResponse(
         new ApiError(400, 'Invalid payment request', 'VALIDATION_ERROR', {
           required: ['order_id'],
@@ -58,83 +47,63 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Verify order exists and belongs to user
-    const { data: order, error: orderError } = await supabaseAdmin
+    const { data: order } = await supabaseAdmin
       .from('orders')
-      .select('*')
-      .eq('id', order_id)
-      .eq('user_id', session.user.id)
-      .single()
+      .select(
+        'id, user_id, order_number, status, payment_status, payment_method, payment_id, total_amount, customer_email'
+      )
+      .eq('id', orderId)
+      .maybeSingle()
 
-    if (orderError || !order) {
+    if (!order || !canAccessOrder(order, session, accessToken)) {
       return errorResponse(
         new ApiError(404, 'Order not found', 'ORDER_NOT_FOUND')
       )
     }
-
-    // Check if order is already paid
     if (order.payment_status === 'paid') {
       return errorResponse(
         new ApiError(400, 'Order already paid', 'ORDER_ALREADY_PAID')
       )
     }
-
-    // Compute amount from server-side order data (ignore client-sent amount)
-    const expectedAmountPaise = Math.round(order.total_amount * 100)
-
-    // Create Razorpay order
-    const razorpayOrderData = {
-      amount: expectedAmountPaise, // Amount in paise, computed server-side
-      currency: currency,
-      receipt: receipt || order.order_number,
-      notes: {
-        order_id: order.id,
-        order_number: order.order_number,
-        user_id: session.user.id,
-        ...notes,
-      },
-    }
-
-    const razorpayResponse = await fetch(`${RAZORPAY_BASE_URL}/orders`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Basic ${Buffer.from(`${RAZORPAY_KEY_ID}:${RAZORPAY_KEY_SECRET}`).toString('base64')}`,
-      },
-      body: JSON.stringify(razorpayOrderData),
-    })
-
-    if (!razorpayResponse.ok) {
-      const error = await razorpayResponse.json()
-      console.error('Razorpay error:', error)
+    if (order.status !== 'pending') {
       return errorResponse(
         new ApiError(
-          500,
-          'Failed to create payment order',
-          'PAYMENT_ORDER_FAILED',
-          error
+          400,
+          'This order can no longer be paid',
+          'ORDER_NOT_PAYABLE'
         )
       )
     }
 
-    const razorpayOrder = await razorpayResponse.json()
+    const amountPaise = Math.round(Number(order.total_amount) * 100)
+    const razorpayOrder = await createRazorpayOrder({
+      amountPaise,
+      receipt: order.order_number || order.id,
+      notes: {
+        order_id: order.id,
+        order_number: order.order_number || '',
+      },
+    })
 
-    // Update order with payment ID
+    // Remember which Razorpay order belongs to this order; verify() and the
+    // webhook only accept payments for exactly this id.
     await supabaseAdmin
       .from('orders')
       .update({
         payment_id: razorpayOrder.id,
         payment_method: 'online',
+        payment_status: 'pending',
       })
-      .eq('id', order_id)
+      .eq('id', order.id)
 
     return successResponse(
       {
         razorpay_order_id: razorpayOrder.id,
         amount: razorpayOrder.amount,
         currency: razorpayOrder.currency,
-        key_id: RAZORPAY_KEY_ID,
-        order_id: order_id,
+        key_id: process.env.RAZORPAY_KEY_ID,
+        order_id: order.id,
+        order_number: order.order_number,
       },
       201
     )
@@ -142,12 +111,3 @@ export async function POST(request: NextRequest) {
     return handleApiError(error)
   }
 }
-
-
-
-
-
-
-
-
-

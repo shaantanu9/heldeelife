@@ -38,6 +38,7 @@ import {
 import { checkFreeShipping } from '@/lib/utils/pricing'
 import { AnalyticsTracker } from '@/lib/analytics/tracking'
 import { BUSINESS_CONFIG } from '@/lib/constants'
+import { computeOrderTotals } from '@/lib/commerce/totals'
 
 interface SavedAddress {
   id: string
@@ -118,6 +119,24 @@ export default function CheckoutPage() {
     discount_amount: number
   } | null>(null)
   const [isValidatingCoupon, setIsValidatingCoupon] = useState(false)
+  const [onlinePaymentAvailable, setOnlinePaymentAvailable] = useState(true)
+
+  // Only offer online payment when the gateway is configured server-side
+  useEffect(() => {
+    fetch('/api/payments/config')
+      .then((res) => (res.ok ? res.json() : null))
+      .then((config) => {
+        if (config && !config.online) {
+          setOnlinePaymentAvailable(false)
+          setFormData((prev) =>
+            prev.paymentMethod === 'online'
+              ? { ...prev, paymentMethod: 'cod' }
+              : prev
+          )
+        }
+      })
+      .catch(() => {})
+  }, [])
   const [couponError, setCouponError] = useState('')
 
   const handleApplyCoupon = async () => {
@@ -132,7 +151,10 @@ export default function CheckoutPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           code: couponCode.trim(),
-          subtotal: totalPrice,
+          items: cart.map((item) => ({
+            product_id: item.product_id,
+            quantity: item.quantity,
+          })),
         }),
       })
 
@@ -161,6 +183,44 @@ export default function CheckoutPage() {
       setIsValidatingCoupon(false)
     }
   }
+
+  // Keep an applied coupon's discount in sync when the cart changes (the
+  // server re-validates at order time, this keeps the displayed total honest)
+  const cartKey = cart.map((i) => `${i.product_id}:${i.quantity}`).join(',')
+  useEffect(() => {
+    if (!appliedCoupon || cart.length === 0) return
+    let cancelled = false
+    fetch('/api/coupons/validate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        code: appliedCoupon.code,
+        items: cart.map((item) => ({
+          product_id: item.product_id,
+          quantity: item.quantity,
+        })),
+      }),
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        if (cancelled) return
+        if (data.valid) {
+          setAppliedCoupon((prev) =>
+            prev ? { ...prev, discount_amount: data.discount_amount } : prev
+          )
+        } else {
+          setAppliedCoupon(null)
+          toast.info('Coupon removed', {
+            description: data.error || 'It no longer applies to your cart',
+          })
+        }
+      })
+      .catch(() => {})
+    return () => {
+      cancelled = true
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cartKey])
 
   // Handle selecting a saved address (shipping)
   const handleSelectAddress = (address: SavedAddress) => {
@@ -402,41 +462,34 @@ export default function CheckoutPage() {
           }
         : shippingAddress
 
-      // Calculate totals
-      const subtotal = totalPrice
-      const tax = totalPrice * BUSINESS_CONFIG.taxRate
-      const shipping = 0 // Free shipping
-      const discount = appliedCoupon?.discount_amount || 0
-      const finalTotal = subtotal + tax + shipping - discount
-
-      // Create order using context
+      // Prices, shipping, tax and the coupon discount are all recomputed on
+      // the server from the database; we only send what was ordered.
       const order = await createOrder({
         items: items.map((item) => ({
           product_id: item.product_id,
-          name: item.name,
-          sku: item.sku || undefined,
-          price: item.price,
           quantity: item.quantity,
         })),
         shipping_address: shippingAddress,
         billing_address: billingAddress,
-        payment_method: formData.paymentMethod,
-        subtotal,
-        tax_amount: tax,
-        shipping_amount: shipping,
-        discount_amount: discount,
-        coupon_id: appliedCoupon?.id,
-        notes: formData.saveAddress ? 'Address saved for future orders' : '',
+        payment_method: formData.paymentMethod === 'online' ? 'online' : 'cod',
+        coupon_code: appliedCoupon?.code,
       })
 
       if (!order) {
         throw new Error('Failed to create order')
       }
 
+      // Guests have no session; this token lets them pay for and view the
+      // order they just placed.
+      const accessToken = order.access_token || ''
+      const successUrl = `/orders/success?orderId=${order.id}${
+        accessToken ? `&token=${encodeURIComponent(accessToken)}` : ''
+      }`
+
       // Save address if user requested
       if (formData.saveAddress) {
         try {
-          await fetch('/api/addresses', {
+          const addressResponse = await fetch('/api/addresses', {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
@@ -463,9 +516,11 @@ export default function CheckoutPage() {
               longitude: addressData.longitude,
             }),
           })
-          toast.success('Address Saved', {
-            description: 'Your address has been saved for future orders',
-          })
+          if (addressResponse.ok) {
+            toast.success('Address Saved', {
+              description: 'Your address has been saved for future orders',
+            })
+          }
         } catch (error) {
           console.error('Error saving address:', error)
           // Don't fail the order if address save fails
@@ -506,8 +561,7 @@ export default function CheckoutPage() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               order_id: order.id,
-              amount: order.total_amount,
-              currency: 'INR',
+              access_token: accessToken,
             }),
           })
 
@@ -518,13 +572,15 @@ export default function CheckoutPage() {
           const paymentData = await paymentResponse.json()
 
           if (!paymentData.success || !paymentData.data) {
-            throw new Error(paymentData.error?.message || 'Failed to create payment order')
+            throw new Error(
+              paymentData.error?.message || 'Failed to create payment order'
+            )
           }
 
           // Initialize Razorpay
           if (typeof window !== 'undefined' && (window as any).Razorpay) {
             const options = {
-              key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
+              key: paymentData.data.key_id,
               amount: paymentData.data.amount,
               currency: paymentData.data.currency,
               name: 'heldeelife',
@@ -541,21 +597,23 @@ export default function CheckoutPage() {
                       razorpay_payment_id: response.razorpay_payment_id,
                       razorpay_signature: response.razorpay_signature,
                       order_id: order.id,
+                      access_token: accessToken,
                     }),
                   })
 
-                  if (verifyResponse.ok) {
-                    clearCart()
-                    router.push(`/orders/success?orderId=${order.id}`)
-                  } else {
+                  if (!verifyResponse.ok) {
                     throw new Error('Payment verification failed')
                   }
+                  clearCart()
+                  router.push(successUrl)
                 } catch (error) {
                   console.error('Payment verification error:', error)
-                  toast.error('Payment verification failed', {
-                    description: 'Please contact support',
+                  toast.error('We could not confirm your payment yet', {
+                    description:
+                      'If money was debited, your order will update automatically within a few minutes.',
                   })
-                  router.push(`/orders/${order.id}`)
+                  clearCart()
+                  router.push(successUrl)
                 }
               },
               prefill: {
@@ -568,10 +626,13 @@ export default function CheckoutPage() {
               },
               modal: {
                 ondismiss: function () {
-                  toast.info('Payment cancelled', {
-                    description: 'You can complete payment later',
+                  toast.info('Payment not completed', {
+                    description: 'You can retry payment from the order page',
                   })
-                  router.push(`/orders/${order.id}`)
+                  // The order (and its stock reservation) exists; the cart
+                  // has been converted into it.
+                  clearCart()
+                  router.push(successUrl)
                 },
               },
             }
@@ -582,18 +643,20 @@ export default function CheckoutPage() {
             return
           } else {
             // Razorpay script not loaded, redirect to order page
-            toast.warning('Payment gateway loading...', {
-              description: 'Please try again in a moment',
+            toast.warning('Payment gateway is still loading', {
+              description: 'You can complete payment from the order page',
             })
-            router.push(`/orders/${order.id}`)
+            clearCart()
+            router.push(successUrl)
             return
           }
         } catch (error) {
           console.error('Payment error:', error)
-          toast.error('Payment initialization failed', {
-            description: 'You can complete payment later',
+          toast.error('Payment could not be started', {
+            description: 'You can retry payment from the order page',
           })
-          router.push(`/orders/${order.id}`)
+          clearCart()
+          router.push(successUrl)
           return
         }
       }
@@ -602,7 +665,7 @@ export default function CheckoutPage() {
       clearCart()
 
       // For COD, redirect to success page
-      router.push(`/orders/success?orderId=${order.id}`)
+      router.push(successUrl)
     } catch (error) {
       console.error('Error creating order:', error)
       const errorMessage =
@@ -617,9 +680,11 @@ export default function CheckoutPage() {
     }
   }
 
-  const tax = totalPrice * BUSINESS_CONFIG.taxRate
-  const discount = appliedCoupon?.discount_amount || 0
-  const finalTotal = totalPrice + tax - discount
+  // Same calculation the server uses, so the total shown is the total charged
+  const totals = computeOrderTotals(
+    totalPrice,
+    appliedCoupon?.discount_amount || 0
+  )
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-orange-50/40 py-8 md:py-16">
@@ -693,7 +758,11 @@ export default function CheckoutPage() {
                         Select Saved Address
                       </Label>
                       <Select
-                        value={selectedAddressId && selectedAddressId !== 'new' ? selectedAddressId : undefined}
+                        value={
+                          selectedAddressId && selectedAddressId !== 'new'
+                            ? selectedAddressId
+                            : undefined
+                        }
                         onValueChange={(value) => {
                           if (value === 'new') {
                             // User wants to enter new address
@@ -756,10 +825,25 @@ export default function CheckoutPage() {
                           <div className="flex items-start justify-between gap-2">
                             <div className="flex-1">
                               <p className="text-sm text-green-900 font-medium">
-                                ✓ Selected: {savedAddresses.find(a => a.id === selectedAddressId)?.name}
+                                ✓ Selected:{' '}
+                                {
+                                  savedAddresses.find(
+                                    (a) => a.id === selectedAddressId
+                                  )?.name
+                                }
                               </p>
                               <p className="text-xs text-green-700 mt-1">
-                                {savedAddresses.find(a => a.id === selectedAddressId)?.address_line1}, {savedAddresses.find(a => a.id === selectedAddressId)?.city}
+                                {
+                                  savedAddresses.find(
+                                    (a) => a.id === selectedAddressId
+                                  )?.address_line1
+                                }
+                                ,{' '}
+                                {
+                                  savedAddresses.find(
+                                    (a) => a.id === selectedAddressId
+                                  )?.city
+                                }
                               </p>
                             </div>
                             <Button
@@ -833,7 +917,10 @@ export default function CheckoutPage() {
                             required
                             value={formData.email}
                             onChange={(e) =>
-                              setFormData({ ...formData, email: e.target.value })
+                              setFormData({
+                                ...formData,
+                                email: e.target.value,
+                              })
                             }
                             className="rounded-lg border-gray-300 bg-white focus:border-orange-500 focus:ring-2 focus:ring-orange-100 transition-all duration-200 mt-1 h-12"
                             placeholder="your.email@example.com"
@@ -947,7 +1034,12 @@ export default function CheckoutPage() {
                               Select Saved Billing Address
                             </Label>
                             <Select
-                              value={selectedBillingAddressId && selectedBillingAddressId !== 'new' ? selectedBillingAddressId : undefined}
+                              value={
+                                selectedBillingAddressId &&
+                                selectedBillingAddressId !== 'new'
+                                  ? selectedBillingAddressId
+                                  : undefined
+                              }
                               onValueChange={(value) => {
                                 if (value === 'new') {
                                   // User wants to enter new address
@@ -1009,56 +1101,76 @@ export default function CheckoutPage() {
                                 ))}
                               </SelectContent>
                             </Select>
-                            {selectedBillingAddressId && selectedBillingAddressId !== 'new' && (
-                              <div className="mt-2 p-3 bg-green-50 border border-green-200 rounded-lg">
-                                <div className="flex items-start justify-between gap-2">
-                                  <div className="flex-1">
-                                    <p className="text-sm text-green-900 font-medium">
-                                      ✓ Selected: {savedAddresses.find(a => a.id === selectedBillingAddressId)?.name}
-                                    </p>
-                                    <p className="text-xs text-green-700 mt-1">
-                                      {savedAddresses.find(a => a.id === selectedBillingAddressId)?.address_line1}, {savedAddresses.find(a => a.id === selectedBillingAddressId)?.city}
-                                    </p>
+                            {selectedBillingAddressId &&
+                              selectedBillingAddressId !== 'new' && (
+                                <div className="mt-2 p-3 bg-green-50 border border-green-200 rounded-lg">
+                                  <div className="flex items-start justify-between gap-2">
+                                    <div className="flex-1">
+                                      <p className="text-sm text-green-900 font-medium">
+                                        ✓ Selected:{' '}
+                                        {
+                                          savedAddresses.find(
+                                            (a) =>
+                                              a.id === selectedBillingAddressId
+                                          )?.name
+                                        }
+                                      </p>
+                                      <p className="text-xs text-green-700 mt-1">
+                                        {
+                                          savedAddresses.find(
+                                            (a) =>
+                                              a.id === selectedBillingAddressId
+                                          )?.address_line1
+                                        }
+                                        ,{' '}
+                                        {
+                                          savedAddresses.find(
+                                            (a) =>
+                                              a.id === selectedBillingAddressId
+                                          )?.city
+                                        }
+                                      </p>
+                                    </div>
+                                    <Button
+                                      type="button"
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={() => {
+                                        setSelectedBillingAddressId('new')
+                                        setShowBillingAddressForm(true)
+                                        setBillingFormData({
+                                          name: '',
+                                          email: '',
+                                          phone: '',
+                                        })
+                                        setBillingAddressData({
+                                          address: '',
+                                          addressLine2: '',
+                                          city: '',
+                                          state: '',
+                                          pincode: '',
+                                          country: 'India',
+                                          landmark: '',
+                                          buildingName: '',
+                                          floor: '',
+                                          unit: '',
+                                          instructions: '',
+                                        })
+                                      }}
+                                      className="h-8 text-xs"
+                                    >
+                                      <Plus className="h-3 w-3 mr-1" />
+                                      Add New
+                                    </Button>
                                   </div>
-                                  <Button
-                                    type="button"
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() => {
-                                      setSelectedBillingAddressId('new')
-                                      setShowBillingAddressForm(true)
-                                      setBillingFormData({
-                                        name: '',
-                                        email: '',
-                                        phone: '',
-                                      })
-                                      setBillingAddressData({
-                                        address: '',
-                                        addressLine2: '',
-                                        city: '',
-                                        state: '',
-                                        pincode: '',
-                                        country: 'India',
-                                        landmark: '',
-                                        buildingName: '',
-                                        floor: '',
-                                        unit: '',
-                                        instructions: '',
-                                      })
-                                    }}
-                                    className="h-8 text-xs"
-                                  >
-                                    <Plus className="h-3 w-3 mr-1" />
-                                    Add New
-                                  </Button>
                                 </div>
-                              </div>
-                            )}
+                              )}
                           </div>
                         )}
 
                         {/* Billing Address Form - Only show when adding new address or no saved addresses */}
-                        {(showBillingAddressForm || savedAddresses.length === 0) && (
+                        {(showBillingAddressForm ||
+                          savedAddresses.length === 0) && (
                           <div className="space-y-4 pt-4 border-t">
                             <div className="grid md:grid-cols-2 gap-4">
                               <div>
@@ -1106,7 +1218,10 @@ export default function CheckoutPage() {
                               </div>
                             </div>
                             <div>
-                              <Label htmlFor="billing-phone" className="font-light">
+                              <Label
+                                htmlFor="billing-phone"
+                                className="font-light"
+                              >
                                 Phone Number *
                               </Label>
                               <Input
@@ -1183,6 +1298,7 @@ export default function CheckoutPage() {
                           type="radio"
                           name="paymentMethod"
                           value="online"
+                          disabled={!onlinePaymentAvailable}
                           checked={formData.paymentMethod === 'online'}
                           onChange={(e) =>
                             setFormData({
@@ -1205,7 +1321,9 @@ export default function CheckoutPage() {
                             </Badge>
                           </div>
                           <p className="text-xs text-gray-600 mt-0.5">
-                            Credit/Debit Card, UPI, Net Banking, Wallets
+                            {onlinePaymentAvailable
+                              ? 'Credit/Debit Card, UPI, Net Banking, Wallets'
+                              : 'Temporarily unavailable — please choose Cash on Delivery'}
                           </p>
                         </div>
                         {formData.paymentMethod === 'online' && (
@@ -1381,10 +1499,12 @@ export default function CheckoutPage() {
 
                 {/* Enhanced Order Summary */}
                 <OrderSummaryEnhanced
-                  subtotal={totalPrice}
-                  tax={tax}
-                  discount={discount}
-                  finalTotal={finalTotal}
+                  subtotal={totals.subtotal}
+                  tax={totals.tax}
+                  shipping={totals.shipping}
+                  taxIncluded={BUSINESS_CONFIG.pricesIncludeTax}
+                  discount={totals.discount}
+                  finalTotal={totals.total}
                   itemCount={cart.length}
                   className="mb-6"
                 />

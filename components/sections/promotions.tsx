@@ -2,7 +2,6 @@
 
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { useCart } from '@/contexts/cart-context'
 import { Clock, Users, Award, ArrowRight, Sparkles } from 'lucide-react'
 import Link from 'next/link'
 
@@ -14,6 +13,7 @@ const promotions = [
     description:
       'Get expert diagnosis and personalized treatment plan from certified allergists. Book your consultation today.',
     buttonText: 'Book Consultation',
+    href: '/service',
     buttonVariant: 'default' as const,
     bgColor: 'bg-gradient-to-br from-blue-50 to-blue-100',
     textColor: 'text-gray-900',
@@ -28,7 +28,8 @@ const promotions = [
     subtitle: 'Travel Wellness Pack',
     description:
       'Essential immunity boosters and preventive care for your journey. Stay healthy while traveling.',
-    buttonText: 'Add to Cart',
+    buttonText: 'Shop Immunity Boosters',
+    href: '/shop?category=immunity-booster',
     buttonVariant: 'default' as const,
     bgColor: 'bg-gradient-to-br from-green-50 to-green-100',
     textColor: 'text-gray-900',
@@ -43,7 +44,8 @@ const promotions = [
     subtitle: 'Complete Diagnostic Solution',
     description:
       'Comprehensive diagnostic pack for sinus and asthma conditions. Get expert consultation included.',
-    buttonText: 'Add to Cart',
+    buttonText: 'Book Diagnostic Consultation',
+    href: '/service',
     buttonVariant: 'default' as const,
     bgColor: 'bg-gradient-to-br from-orange-600 to-orange-700',
     textColor: 'text-white',
@@ -55,19 +57,6 @@ const promotions = [
 ]
 
 export function Promotions() {
-  const { addToCart } = useCart()
-
-  const handleAddToCart = (productName: string) => {
-    // Add sample product to cart
-    addToCart({
-      id: `promo-${Date.now()}`,
-      product_id: `promo-${Date.now()}`,
-      name: productName,
-      price: 199.0,
-      image: '📦',
-    })
-  }
-
   return (
     <section className="py-24 bg-gradient-to-br from-slate-50 via-white to-orange-50/20">
       <div className="container px-4">
@@ -165,35 +154,20 @@ export function Promotions() {
                   </div>
 
                   {/* CTA */}
-                  {promo.buttonText === 'Book Consultation' ? (
-                    <Button
-                      size="lg"
-                      className={`rounded-lg font-semibold shadow-lg hover:shadow-xl transition-all duration-200 w-full ${
-                        promo.textColor === 'text-white'
-                          ? 'bg-white text-orange-600 hover:bg-gray-50'
-                          : 'bg-orange-600 hover:bg-orange-700 text-white'
-                      }`}
-                      asChild
-                    >
-                      <Link href="/service">
-                        {promo.buttonText}
-                        <ArrowRight className="ml-2 h-4 w-4" />
-                      </Link>
-                    </Button>
-                  ) : (
-                    <Button
-                      size="lg"
-                      className={`rounded-lg font-semibold shadow-lg hover:shadow-xl transition-all duration-200 w-full ${
-                        promo.textColor === 'text-white'
-                          ? 'bg-white text-orange-600 hover:bg-gray-50'
-                          : 'bg-orange-600 hover:bg-orange-700 text-white'
-                      }`}
-                      onClick={() => handleAddToCart(promo.title)}
-                    >
+                  <Button
+                    size="lg"
+                    className={`rounded-lg font-semibold shadow-lg hover:shadow-xl transition-all duration-200 w-full ${
+                      promo.textColor === 'text-white'
+                        ? 'bg-white text-orange-600 hover:bg-gray-50'
+                        : 'bg-orange-600 hover:bg-orange-700 text-white'
+                    }`}
+                    asChild
+                  >
+                    <Link href={promo.href}>
                       {promo.buttonText}
                       <ArrowRight className="ml-2 h-4 w-4" />
-                    </Button>
-                  )}
+                    </Link>
+                  </Button>
                 </CardContent>
               </Card>
             ))}

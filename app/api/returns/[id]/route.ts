@@ -2,9 +2,16 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth-options'
 import { supabaseAdmin } from '@/lib/supabase/server'
-import { createCachedResponse } from '@/lib/utils/cache-headers'
-import { REVALIDATE_TIMES } from '@/lib/constants'
 
+const RETURN_STATUSES = [
+  'pending',
+  'approved',
+  'rejected',
+  'picked_up',
+  'received',
+  'processed',
+  'refunded',
+] as const
 
 // GET /api/returns/[id] - Get single return
 export async function GET(
@@ -40,10 +47,6 @@ export async function GET(
           product_image,
           quantity,
           unit_price
-        ),
-        users:user_id (
-          email,
-          full_name
         )
       `
       )
@@ -60,26 +63,35 @@ export async function GET(
       return NextResponse.json({ error: 'Return not found' }, { status: 404 })
     }
 
+    // returns.user_id references auth.users (not public.users), so PostgREST
+    // cannot embed the profile; fetch fallback customer info separately.
+    let profile: { email?: string; full_name?: string } | null = null
+    if (
+      returnRequest.user_id &&
+      (!returnRequest.orders?.customer_name ||
+        !returnRequest.orders?.customer_email)
+    ) {
+      const { data } = await supabaseAdmin
+        .from('users')
+        .select('email, full_name')
+        .eq('id', returnRequest.user_id)
+        .maybeSingle()
+      profile = data
+    }
+
     // Format return with customer info
     const formattedReturn = {
       ...returnRequest,
       order_number: returnRequest.orders?.order_number,
-      customer_name:
-        returnRequest.orders?.customer_name || returnRequest.users?.full_name,
-      customer_email:
-        returnRequest.orders?.customer_email || returnRequest.users?.email,
+      customer_name: returnRequest.orders?.customer_name || profile?.full_name,
+      customer_email: returnRequest.orders?.customer_email || profile?.email,
       customer_phone: returnRequest.orders?.customer_phone,
     }
 
-    // Cache return detail for 2 minutes (private cache)
-    return createCachedResponse(
+    // Per-user data: never cache (shared browsers / cross-user leaks)
+    return NextResponse.json(
       { return: formattedReturn },
-      {
-        public: false,
-        maxAge: REVALIDATE_TIMES.returns, // 2 minutes
-        staleWhileRevalidate: 300, // 5 minutes
-        mustRevalidate: false,
-      }
+      { headers: { 'Cache-Control': 'no-store' } }
     )
   } catch (error) {
     console.error('Error in GET /api/returns/[id]:', error)
@@ -90,7 +102,8 @@ export async function GET(
   }
 }
 
-// PUT /api/returns/[id] - Update return status (admin) or cancel (user)
+// PUT /api/returns/[id] - Update return status (admin only).
+// Customers cancel their own pending returns via DELETE.
 export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -102,8 +115,21 @@ export async function PUT(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
+    // Only admins may change a return's status / logistics fields. Letting
+    // the owner call PUT would allow self-approving or marking "refunded".
+    if (session.user.role !== 'admin') {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    }
+
     const { id } = await params
     const body = await request.json()
+
+    if (
+      body.status !== undefined &&
+      !(RETURN_STATUSES as readonly string[]).includes(body.status)
+    ) {
+      return NextResponse.json({ error: 'Invalid status' }, { status: 400 })
+    }
 
     // Get existing return
     const { data: existingReturn, error: fetchError } = await supabaseAdmin
@@ -116,22 +142,7 @@ export async function PUT(
       return NextResponse.json({ error: 'Return not found' }, { status: 404 })
     }
 
-    // Users can only cancel their own pending returns
-    if (
-      session.user.role !== 'admin' &&
-      existingReturn.user_id !== session.user.id
-    ) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
-    }
-
-    if (session.user.role !== 'admin' && existingReturn.status !== 'pending') {
-      return NextResponse.json(
-        { error: 'Can only cancel pending returns' },
-        { status: 400 }
-      )
-    }
-
-    const updateData: any = {}
+    const updateData: Record<string, unknown> = {}
 
     if (body.status) {
       updateData.status = body.status
@@ -155,6 +166,13 @@ export async function PUT(
 
     if (body.pickup_address) {
       updateData.pickup_address = body.pickup_address
+    }
+
+    if (Object.keys(updateData).length === 0) {
+      return NextResponse.json(
+        { error: 'No valid fields to update' },
+        { status: 400 }
+      )
     }
 
     const { data: updatedReturn, error } = await supabaseAdmin

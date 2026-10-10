@@ -27,7 +27,7 @@ import Link from 'next/link'
 import { OrderStatusBadge, OrderItemCard } from '@/components/orders'
 
 export default function OrdersPage() {
-  const { data: session } = useSession()
+  const { data: session, status: sessionStatus } = useSession()
   const router = useRouter()
   const {
     orders,
@@ -39,10 +39,15 @@ export default function OrdersPage() {
   } = useOrderContext()
 
   useEffect(() => {
+    // Wait for the session to load; only bounce when truly signed out
+    if (sessionStatus === 'loading') return
     if (!session) {
-      router.push('/auth/signin')
+      router.push(
+        `/auth/signin?callbackUrl=${encodeURIComponent(window.location.pathname)}`
+      )
+      return
     }
-  }, [session, router])
+  }, [session, sessionStatus, router])
 
   const [searchQuery, setSearchQuery] = useState('')
 

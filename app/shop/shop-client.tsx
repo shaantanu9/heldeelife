@@ -87,6 +87,7 @@ interface Product {
   compare_at_price?: number
   image: string
   short_description?: string
+  description?: string
   inStock: boolean
   stockQuantity?: number
   rating?: number
@@ -171,13 +172,13 @@ function AddToCartButton({ product }: { product: Product }) {
 
     setIsAdding(true)
     try {
-      await new Promise((resolve) => setTimeout(resolve, 300))
       addToCart({
         id: product.id,
         product_id: product.id,
         name: product.name,
         price: Number(product.price),
         image: product.image || '📦',
+        maxQuantity: product.stockQuantity,
       })
       toast.success('Added to cart!', {
         description: product.name,
@@ -676,13 +677,20 @@ export function ShopClient({ products, categories }: ShopClientProps) {
     return searchParams.get('onSale') === 'true'
   })
 
-  const [viewMode, setViewMode] = useState<'grid' | 'list'>(() => {
-    if (typeof window !== 'undefined') {
+  // Start with 'grid' on both server and client to avoid a hydration
+  // mismatch; restore the saved preference after mount.
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid')
+
+  useEffect(() => {
+    try {
       const saved = localStorage.getItem('shop-view-mode')
-      return (saved as 'grid' | 'list') || 'grid'
+      if (saved === 'grid' || saved === 'list') {
+        setViewMode(saved)
+      }
+    } catch {
+      // ignore storage errors (private mode etc.)
     }
-    return 'grid'
-  })
+  }, [])
 
   const [currentPage, setCurrentPage] = useState(1)
   const productsPerPage = 12
@@ -717,6 +725,7 @@ export function ShopClient({ products, categories }: ShopClientProps) {
         (product) =>
           product.name.toLowerCase().includes(query) ||
           product.short_description?.toLowerCase().includes(query) ||
+          product.description?.toLowerCase().includes(query) ||
           product.product_categories?.name.toLowerCase().includes(query)
       )
     }
@@ -800,12 +809,27 @@ export function ShopClient({ products, categories }: ShopClientProps) {
     return filteredAndSortedProducts.slice(start, end)
   }, [filteredAndSortedProducts, currentPage])
 
-  // Save view mode to localStorage
+  // Go back to the first page whenever the filters or sort order change
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('shop-view-mode', viewMode)
+    setCurrentPage(1)
+  }, [
+    searchQuery,
+    selectedCategories,
+    priceRange,
+    inStockOnly,
+    minRating,
+    onSaleOnly,
+    sortBy,
+  ])
+
+  const handleViewModeChange = useCallback((mode: 'grid' | 'list') => {
+    setViewMode(mode)
+    try {
+      localStorage.setItem('shop-view-mode', mode)
+    } catch {
+      // ignore storage errors
     }
-  }, [viewMode])
+  }, [])
 
   // Update URL params when filters change
   const updateURLParams = useCallback(
@@ -820,10 +844,9 @@ export function ShopClient({ products, categories }: ShopClientProps) {
         const params = new URLSearchParams(searchParams.toString())
 
         if (updates.categories !== undefined) {
+          // The server filters by a single category slug
           if (updates.categories.length === 0) {
             params.delete('category')
-          } else if (updates.categories.length === 1) {
-            params.set('category', updates.categories[0])
           } else {
             params.set('category', updates.categories[0])
           }
@@ -874,13 +897,13 @@ export function ShopClient({ products, categories }: ShopClientProps) {
 
   const handleCategoryChange = useCallback(
     (category: string, checked: boolean) => {
-      const newCategories = checked
-        ? [...selectedCategories, category]
-        : selectedCategories.filter((c) => c !== category)
+      // Single-select: the server only filters by one category slug, so
+      // selecting a category replaces any previous selection.
+      const newCategories = checked ? [category] : []
       setSelectedCategories(newCategories)
       updateURLParams({ categories: newCategories })
     },
-    [selectedCategories, updateURLParams]
+    [updateURLParams]
   )
 
   const handlePriceRangeChange = useCallback(
@@ -1145,7 +1168,7 @@ export function ShopClient({ products, categories }: ShopClientProps) {
                 type="single"
                 value={viewMode}
                 onValueChange={(value) => {
-                  if (value) setViewMode(value as 'grid' | 'list')
+                  if (value) handleViewModeChange(value as 'grid' | 'list')
                 }}
               >
                 <ToggleGroupItem value="grid" aria-label="Grid view">

@@ -6,10 +6,18 @@
  * covering products, orders, inventory, and admin functionality.
  */
 
-describe('E-commerce System Tests', () => {
+/**
+ * Live integration suite: runs against a real server.
+ *   E2E_BASE_URL=http://localhost:3000 npx vitest run __tests__/ecommerce.test.ts
+ * Skipped in normal unit-test runs.
+ */
+const BASE = process.env.E2E_BASE_URL?.replace(/\/$/, '')
+const api = (path: string, init?: RequestInit) => fetch(`${BASE}${path}`, init)
+
+describe.skipIf(!BASE)('E-commerce System Tests', () => {
   describe('Product Management', () => {
     test('should fetch all active products', async () => {
-      const response = await fetch('/api/products')
+      const response = await api('/api/products')
       expect(response.status).toBe(200)
       const data = await response.json()
       expect(data).toHaveProperty('products')
@@ -17,7 +25,7 @@ describe('E-commerce System Tests', () => {
     })
 
     test('should fetch products by category', async () => {
-      const response = await fetch('/api/products?category=cold-relief')
+      const response = await api('/api/products?category=cold-relief')
       expect(response.status).toBe(200)
       const data = await response.json()
       expect(
@@ -28,7 +36,7 @@ describe('E-commerce System Tests', () => {
     })
 
     test('should search products by name', async () => {
-      const response = await fetch('/api/products?search=nasal')
+      const response = await api('/api/products?search=nasal')
       expect(response.status).toBe(200)
       const data = await response.json()
       expect(
@@ -38,21 +46,21 @@ describe('E-commerce System Tests', () => {
 
     test('should fetch single product by ID', async () => {
       // First get a product ID
-      const listResponse = await fetch('/api/products')
+      const listResponse = await api('/api/products')
       const listData = await listResponse.json()
       if (listData.products.length > 0) {
         const productId = listData.products[0].id
-        const response = await fetch(`/api/products/${productId}`)
+        const response = await api(`/api/products/${productId}`)
         expect(response.status).toBe(200)
         const data = await response.json()
-        expect(data).toHaveProperty('id')
-        expect(data.id).toBe(productId)
+        expect(data).toHaveProperty('product')
+        expect(data.product.id).toBe(productId)
       }
     })
 
     test('should return 404 for non-existent product', async () => {
       const fakeId = '00000000-0000-0000-0000-000000000000'
-      const response = await fetch(`/api/products/${fakeId}`)
+      const response = await api(`/api/products/${fakeId}`)
       expect(response.status).toBe(404)
     })
 
@@ -146,7 +154,7 @@ describe('E-commerce System Tests', () => {
 
     test('should update order status (admin only)', async () => {
       // Would need authenticated admin request
-      // const response = await fetch(`/api/orders/${orderId}`, {
+      // const response = await api(`/api/orders/${orderId}`, {
       //   method: "PUT",
       //   headers: { "Content-Type": "application/json" },
       //   body: JSON.stringify({ status: "confirmed" }),
@@ -175,7 +183,7 @@ describe('E-commerce System Tests', () => {
 
   describe('Category Management', () => {
     test('should fetch all active categories', async () => {
-      const response = await fetch('/api/products/categories')
+      const response = await api('/api/products/categories')
       expect(response.status).toBe(200)
       const data = await response.json()
       expect(data).toHaveProperty('categories')
@@ -185,13 +193,54 @@ describe('E-commerce System Tests', () => {
   })
 
   describe('Authentication & Authorization', () => {
-    test('should require authentication for order creation', async () => {
-      const response = await fetch('/api/orders', {
+    // Guest checkout is supported, so creating an order needs no session —
+    // but guests must give contact details and can never set prices.
+    test('should validate guest orders and ignore client prices', async () => {
+      const empty = await api('/api/orders', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ items: [] }),
       })
-      expect(response.status).toBe(401)
+      expect(empty.status).toBe(400)
+
+      const list = await (await api('/api/products?limit=1')).json()
+      const product = list.products[0]
+      const noContact = await api('/api/orders', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          items: [{ product_id: product.id, quantity: 1 }],
+          shipping_address: { address: 'x' },
+        }),
+      })
+      expect(noContact.status).toBe(400)
+
+      const res = await api('/api/orders', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          items: [{ product_id: product.id, quantity: 1, price: 0.01 }],
+          subtotal: 0.01,
+          shipping_address: {
+            name: 'E2E Guest',
+            email: 'e2e@example.com',
+            phone: '9999999999',
+            address: '1 Test Street',
+          },
+        }),
+      })
+      expect(res.status).toBe(201)
+      const { order, access_token } = await res.json()
+      expect(Number(order.subtotal)).toBe(Number(product.price))
+      expect(access_token).toBeTruthy()
+
+      // Cancel it again so the run leaves stock untouched
+      const cancel = await api(`/api/orders/${order.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'cancelled', access_token }),
+      })
+      expect(cancel.status).toBe(200)
     })
 
     test('should require admin role for product creation', async () => {
@@ -246,7 +295,7 @@ describe('E-commerce System Tests', () => {
 /**
  * Integration Test Scenarios
  */
-describe('E-commerce Integration Tests', () => {
+describe.skipIf(!BASE)('E-commerce Integration Tests', () => {
   test('Complete order flow', async () => {
     // 1. User browses products
     // 2. User adds products to cart
@@ -273,17 +322,17 @@ describe('E-commerce Integration Tests', () => {
 /**
  * Performance Tests
  */
-describe('Performance Tests', () => {
+describe.skipIf(!BASE)('Performance Tests', () => {
   test('should load products page quickly', async () => {
     const start = Date.now()
-    await fetch('/api/products')
+    await api('/api/products')
     const duration = Date.now() - start
     expect(duration).toBeLessThan(1000) // Should load in under 1 second
   })
 
   test('should handle pagination efficiently', async () => {
     // Test with limit and offset parameters
-    const response = await fetch('/api/products?limit=10&offset=0')
+    const response = await api('/api/products?limit=10&offset=0')
     expect(response.status).toBe(200)
   })
 })

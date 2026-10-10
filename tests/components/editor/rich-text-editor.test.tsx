@@ -38,13 +38,15 @@ const mockEditor = {
 }
 
 vi.mock('@tiptap/react', () => ({
-  useEditor: vi.fn((config: { onUpdate?: (args: { editor: typeof mockEditor }) => void }) => {
-    const editor = { ...mockEditor }
-    if (config?.onUpdate) {
-      setTimeout(() => config.onUpdate!({ editor }), 0)
+  useEditor: vi.fn(
+    (config: { onUpdate?: (args: { editor: typeof mockEditor }) => void }) => {
+      const editor = { ...mockEditor }
+      if (config?.onUpdate) {
+        setTimeout(() => config.onUpdate!({ editor }), 0)
+      }
+      return editor
     }
-    return editor
-  }),
+  ),
   EditorContent: ({ editor }: { editor: typeof mockEditor }) => (
     <div data-testid="editor-content" data-editor-ready={!!editor}>
       Editor content area
@@ -67,7 +69,10 @@ vi.mock('@/components/editor/image-upload-dialog', () => ({
         <button type="button" onClick={() => onOpenChange(false)}>
           Close
         </button>
-        <button type="button" onClick={() => onInsert('https://example.com/img.jpg')}>
+        <button
+          type="button"
+          onClick={() => onInsert('https://example.com/img.jpg')}
+        >
           Insert URL
         </button>
       </div>
@@ -82,7 +87,12 @@ vi.mock('@/components/blog/product-search-dialog', () => ({
   }: {
     open: boolean
     onOpenChange: (v: boolean) => void
-    onSelect: (p: { id: string; name: string; slug: string; price: number }) => void
+    onSelect: (p: {
+      id: string
+      name: string
+      slug: string
+      price: number
+    }) => void
   }) =>
     open ? (
       <div data-testid="product-search-dialog">
@@ -135,7 +145,8 @@ describe('RichTextEditor', () => {
   it('renders editor UI (toolbar or loading state)', () => {
     render(<RichTextEditor {...defaultProps} />)
     const loadingOrToolbar =
-      screen.queryByText('Loading editor...') ?? screen.queryByRole('button', { name: 'H1' })
+      screen.queryByText('Loading editor...') ??
+      screen.queryByRole('button', { name: 'H1' })
     expect(loadingOrToolbar).toBeInTheDocument()
   })
 
@@ -238,7 +249,9 @@ describe('RichTextEditor', () => {
     const insertBtn = screen.getByRole('button', { name: 'Insert URL' })
     await user.click(insertBtn)
 
-    expect(mockChain.setImage).toHaveBeenCalledWith({ src: 'https://example.com/img.jpg' })
+    expect(mockChain.setImage).toHaveBeenCalledWith({
+      src: 'https://example.com/img.jpg',
+    })
     expect(mockChain.run).toHaveBeenCalled()
   })
 
@@ -261,7 +274,9 @@ describe('RichTextEditor', () => {
     await user.click(selectBtn)
 
     expect(mockChain.insertContent).toHaveBeenCalled()
-    expect(mockChain.insertContent.mock.calls[0][0]).toContain('blog-product-embed')
+    expect(mockChain.insertContent.mock.calls[0][0]).toContain(
+      'blog-product-embed'
+    )
     expect(mockChain.insertContent.mock.calls[0][0]).toContain('Product One')
     expect(mockChain.insertContent.mock.calls[0][0]).toContain('999')
     expect(mockChain.run).toHaveBeenCalled()
@@ -293,15 +308,29 @@ describe('RichTextEditor', () => {
       expect(screen.getByTestId('editor-content')).toBeInTheDocument()
     })
 
-    expect(mockCommands.setContent).not.toHaveBeenCalled()
+    // Editor starts empty (content is only applied after mount), so the
+    // initial content prop is synced in once without emitting an update.
+    await waitFor(() => {
+      expect(mockCommands.setContent).toHaveBeenCalledWith(initialContent, {
+        emitUpdate: false,
+      })
+    })
+    expect(mockCommands.setContent).toHaveBeenCalledTimes(1)
 
     const newContent = '<p>Updated from parent</p>'
     rerender(
-      <RichTextEditor {...defaultProps} content={newContent} onChange={vi.fn()} />
+      <RichTextEditor
+        {...defaultProps}
+        content={newContent}
+        onChange={vi.fn()}
+      />
     )
 
     await waitFor(() => {
-      expect(mockCommands.setContent).toHaveBeenCalledWith(newContent, false)
+      expect(mockCommands.setContent).toHaveBeenCalledWith(newContent, {
+        emitUpdate: false,
+      })
     })
+    expect(mockCommands.setContent).toHaveBeenCalledTimes(2)
   })
 })
